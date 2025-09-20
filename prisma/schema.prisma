@@ -73,6 +73,9 @@ model User {
   reports      Report[]
   auditLogs    AuditLog[]
   createdMetrics BusinessMetric[]
+  subscriptions Subscription[]
+  payments     Payment[]
+  emailLogs    EmailLog[]
 
   @@map("users")
 }
@@ -135,6 +138,9 @@ model Organization {
   integrations       Integration[]
   auditLogs          AuditLog[]
   webhooks           Webhook[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  emailLogs          EmailLog[]
 
   @@map("organizations")
 }
@@ -804,4 +810,208 @@ enum DeliveryStatus {
   SUCCESS
   FAILED
   RETRY
+}
+
+// ============================================================================
+// BILLING & SUBSCRIPTION MANAGEMENT
+// ============================================================================
+
+model Subscription {
+  id                    String   @id @default(cuid())
+  
+  // User & Organization
+  userId                String
+  organizationId        String?
+  
+  // Stripe Integration
+  stripeSubscriptionId  String   @unique
+  stripeCustomerId      String
+  stripePriceId         String?
+  stripeProductId       String?
+  
+  // Subscription Details
+  plan                  SubscriptionPlan
+  status                SubscriptionStatus @default(TRIAL)
+  seats                 Int      @default(1)
+  
+  // Billing
+  amount                Float    // Amount in dollars
+  currency              String   @default("usd")
+  interval              BillingInterval
+  
+  // Trial & Timing
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  
+  // Lifecycle
+  cancelAtPeriodEnd     Boolean  @default(false)
+  canceledAt            DateTime?
+  
+  // Metadata
+  metadata              Json?    // Additional subscription data
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  payments     Payment[]
+  invoices     Invoice[]
+
+  @@map("subscriptions")
+  @@index([userId, status])
+  @@index([organizationId, status])
+  @@index([stripeSubscriptionId])
+}
+
+model Payment {
+  id                   String   @id @default(cuid())
+  
+  // Subscription & User
+  subscriptionId       String?
+  userId               String
+  organizationId       String?
+  
+  // Stripe Integration
+  stripePaymentId      String   @unique
+  stripeInvoiceId      String?
+  stripeChargeId       String?
+  
+  // Payment Details
+  amount               Float    // Amount in dollars
+  currency             String   @default("usd")
+  status               PaymentStatus
+  paymentMethod        String?  // card, bank_transfer, etc.
+  
+  // Processing
+  processingFee        Float?   // Stripe fee
+  netAmount            Float?   // Amount after fees
+  
+  // Failure Handling
+  failureCode          String?
+  failureMessage       String?
+  
+  // Timestamps
+  paidAt               DateTime?
+  failedAt             DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  // Relations
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("payments")
+  @@index([userId, status])
+  @@index([subscriptionId, status])
+  @@index([stripePaymentId])
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  
+  // User & Organization
+  userId         String?
+  organizationId String?
+  
+  // Email Details
+  type           EmailType
+  recipient      String
+  subject        String
+  content        String?  @db.Text
+  
+  // Delivery
+  provider       String   // sendgrid, mailgun, etc.
+  providerMessageId String?
+  status         EmailStatus @default(PENDING)
+  
+  // Error Handling
+  error          String?  @db.Text
+  retryCount     Int      @default(0)
+  
+  // Timestamps
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("email_logs")
+  @@index([userId, type])
+  @@index([organizationId, type])
+  @@index([status, createdAt])
+}
+
+enum SubscriptionPlan {
+  TRIAL
+  CREATIVE
+  ORACLE
+  ENTERPRISE
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  PAUSED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  QUARTERLY
+  WEEKLY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  PROCESSING
+  REQUIRES_ACTION
+  REQUIRES_CONFIRMATION
+  REQUIRES_PAYMENT_METHOD
+}
+
+enum EmailType {
+  TRIAL_WELCOME
+  TRIAL_DAY_3
+  TRIAL_DAY_7
+  TRIAL_DAY_10
+  TRIAL_EXPIRING
+  CONVERSION_SUCCESS
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SUBSCRIPTION_CANCELED
+  INVOICE_REMINDER
+  WELCOME_ONBOARDING
+  FEATURE_ANNOUNCEMENT
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
 }
