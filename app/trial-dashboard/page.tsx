@@ -24,7 +24,9 @@ import {
 } from 'lucide-react'
 
 export default function TrialDashboardPage() {
-  const { data: session, status } = useSession()
+  const sessionResult = useSession()
+  const session = sessionResult?.data
+  const status = sessionResult?.status
   const [trialDaysLeft, setTrialDaysLeft] = useState(14)
   const [activeDemo, setActiveDemo] = useState('oracle')
   const [trialMetrics, setTrialMetrics] = useState({
@@ -464,7 +466,7 @@ export default function TrialDashboardPage() {
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold">Ready to Deploy Trinity Agents?</h3>
               <p className="text-gray-200 max-w-2xl mx-auto">
-                Your trial shows {sampleROI.costSavings} monthly savings potential. 
+                Your trial shows {realROI.costSavings} monthly savings potential.
                 Continue this ROI with a full enterprise deployment.
               </p>
               <div className="flex justify-center gap-4">
