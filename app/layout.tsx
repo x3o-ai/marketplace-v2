@@ -19,10 +19,44 @@ const instrumentSerif = Instrument_Serif({
 })
 
 export const metadata: Metadata = {
-  title: "Brillance - Effortless Custom Contract Billing",
+  title: "x3o.ai - Enterprise AI Automation That Scales With Your Business",
   description:
-    "Streamline your billing process with seamless automation for every custom contract, tailored by Brillance.",
-    generator: 'v0.app'
+    "Deploy Trinity Agents that automate entire departments with 100% explainable AI and measurable ROI for enterprise teams. Oracle Analytics, Sentinel Monitoring, Sage Optimization.",
+  keywords: [
+    "AI automation",
+    "Trinity Agents",
+    "enterprise automation",
+    "explainable AI",
+    "Oracle Analytics",
+    "Sentinel Monitoring",
+    "Sage Optimization",
+    "business automation",
+    "department automation",
+    "enterprise AI",
+    "measurable ROI",
+    "x3o.ai"
+  ],
+  authors: [{ name: "SonnierVentures", url: "https://sonnierventures.com" }],
+  creator: "SonnierVentures",
+  publisher: "x3o.ai",
+  openGraph: {
+    title: "x3o.ai - Enterprise AI Automation That Scales With Your Business",
+    description: "Deploy Trinity Agents that automate entire departments with 100% explainable AI and measurable ROI for enterprise teams",
+    url: "https://x3o.ai",
+    siteName: "x3o.ai",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "x3o.ai - Enterprise AI Automation Platform",
+    description: "Deploy Trinity Agents that automate entire departments with explainable AI",
+    creator: "@x3o_ai",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({

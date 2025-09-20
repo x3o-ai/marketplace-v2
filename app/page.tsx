@@ -156,10 +156,8 @@ export default function LandingPage() {
                     <br />
                     That Scales With Your Business
                   </div>
-                  <div className="w-full max-w-[506.08px] lg:w-[506.08px] text-center flex justify-center flex-col text-[rgba(55,50,47,0.80)] sm:text-lg md:text-xl leading-[1.4] sm:leading-[1.45] md:leading-[1.5] lg:leading-7 font-sans px-2 sm:px-4 md:px-0 lg:text-lg font-medium text-sm">
-                    Deploy Trinity Agents that automate entire departments with
-                    <br className="hidden sm:block" />
-                    100% explainable AI and measurable ROI for enterprise teams.
+                  <div className="w-full max-w-[600px] lg:w-[600px] text-center flex justify-center flex-col text-[rgba(55,50,47,0.80)] sm:text-lg md:text-xl leading-[1.5] sm:leading-[1.6] md:leading-[1.7] lg:leading-8 font-sans px-2 sm:px-4 md:px-0 lg:text-lg font-medium text-sm">
+                    Deploy Trinity Agents that automate entire departments with 100% explainable AI and measurable ROI for enterprise teams.
                   </div>
                 </div>
               </div>
@@ -175,16 +173,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="absolute top-[232px] sm:top-[248px] md:top-[264px] lg:top-[320px] left-1/2 transform -translate-x-1/2 z-0 pointer-events-none">
-                <img
-                  src="/mask-group-pattern.svg"
-                  alt=""
-                  className="w-[936px] sm:w-[1404px] md:w-[2106px] lg:w-[2808px] h-auto opacity-30 sm:opacity-40 md:opacity-50 mix-blend-multiply"
-                  style={{
-                    filter: "hue-rotate(15deg) saturate(0.7) brightness(1.2)",
-                  }}
-                />
-              </div>
 
               <div className="w-full max-w-[960px] lg:w-[960px] pt-2 sm:pt-4 pb-6 sm:pb-8 md:pb-10 px-2 sm:px-4 md:px-6 lg:px-11 flex flex-col justify-center items-center gap-2 relative z-5 my-8 sm:my-12 md:my-16 lg:my-16 mb-0 lg:pb-0">
                 <div className="w-full max-w-[960px] lg:w-[960px] h-[200px] sm:h-[280px] md:h-[450px] lg:h-[695.55px] bg-white shadow-[0px_0px_0px_0.9056603908538818px_rgba(0,0,0,0.08)] overflow-hidden rounded-[6px] sm:rounded-[8px] lg:rounded-[9.06px] flex flex-col justify-start items-start">
@@ -193,15 +181,15 @@ export default function LandingPage() {
                     {/* Main Content */}
                     <div className="w-full h-full flex items-center justify-center">
                       <div className="relative w-full h-full overflow-hidden">
-                        {/* Product Image 1 - Plan your schedules */}
+                        {/* Trinity Agent Dashboard Preview 1 - Oracle Analytics */}
                         <div
                           className={`absolute inset-0 transition-all duration-500 ease-in-out ${
                             activeCard === 0 ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-95 blur-sm"
                           }`}
                         >
                           <img
-                            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/dsadsadsa.jpg-xTHS4hGwCWp2H5bTj8np6DXZUyrxX7.jpeg"
-                            alt="Schedules Dashboard - Customer Subscription Management"
+                            src="/analytics-dashboard-with-charts-graphs-and-data-vi.jpg"
+                            alt="Oracle Analytics Dashboard - Enterprise Business Intelligence"
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -338,7 +326,7 @@ export default function LandingPage() {
                             <img src="/horizon-icon.svg" alt="Horizon" className="w-full h-full object-contain" />
                           </div>
                           <div className="text-center flex justify-center flex-col text-[#37322F] text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-medium leading-tight md:leading-9 font-sans">
-                            {index % 4 === 0 ? 'Enterprise Corp' : index % 4 === 1 ? 'AutoTech Inc' : index % 4 === 2 ? 'DataFlow Systems' : 'AI Solutions Ltd'}
+                            {['GlobalTech', 'InnovateCorp', 'DataFlow Systems', 'TechSolutions', 'Enterprise Corp', 'AutoTech Inc', 'AI Solutions Ltd', 'FutureTech'][index]}
                           </div>
                         </div>
                       )
