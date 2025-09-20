@@ -75,6 +75,7 @@ model User {
   createdMetrics BusinessMetric[]
   subscriptions Subscription[]
   payments     Payment[]
+  invoices     Invoice[]
   emailLogs    EmailLog[]
 
   @@map("users")
@@ -140,6 +141,7 @@ model Organization {
   webhooks           Webhook[]
   subscriptions      Subscription[]
   payments           Payment[]
+  invoices           Invoice[]
   emailLogs          EmailLog[]
 
   @@map("organizations")
@@ -912,6 +914,48 @@ model Payment {
   @@index([stripePaymentId])
 }
 
+model Invoice {
+  id                   String   @id @default(cuid())
+  
+  // Subscription & User
+  subscriptionId       String
+  userId               String
+  organizationId       String?
+  
+  // Stripe Integration
+  stripeInvoiceId      String   @unique
+  
+  // Invoice Details
+  invoiceNumber        String   @unique
+  amount               Float    // Total amount
+  tax                  Float?   // Tax amount
+  discountAmount       Float?   // Discount amount
+  currency             String   @default("usd")
+  
+  // Status & Timing
+  status               InvoiceStatus
+  dueDate              DateTime?
+  paidAt               DateTime?
+  
+  // Files
+  invoiceUrl           String?  // Stripe hosted invoice URL
+  invoicePdf           String?  // PDF download URL
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  subscription Subscription  @relation(fields: [subscriptionId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("invoices")
+  @@index([userId, status])
+  @@index([subscriptionId, status])
+  @@index([stripeInvoiceId])
+}
+
 model EmailLog {
   id             String   @id @default(cuid())
   
@@ -1003,6 +1047,14 @@ enum EmailType {
   INVOICE_REMINDER
   WELCOME_ONBOARDING
   FEATURE_ANNOUNCEMENT
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
 }
 
 enum EmailStatus {
