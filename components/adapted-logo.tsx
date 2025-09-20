@@ -1,6 +1,6 @@
 export function AdaptedLogo({ className = "", size = 120 }: { className?: string; size?: number }) {
   return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+    <div className={`relative ${className}`}>
       <svg
         width={size}
         height={size}
