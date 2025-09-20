@@ -68,27 +68,39 @@ export async function POST(request: NextRequest) {
     // Create trial access record
     const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     
-    // Log initial AI interaction for trial setup
-    const initialInteraction = await prisma.aIInteraction.create({
-      data: {
-        userId: user.id,
-        organizationId: organizationId,
-        agentId: 'oracle', // Default to Oracle for new trials
-        query: `Trial signup: ${validatedData.useCase || 'Enterprise automation trial'}`,
-        response: `Welcome to Trinity Agents! Your 14-day trial includes Oracle Analytics, Sentinel Monitoring, and Sage Optimization.`,
-        confidence: 1.0,
-        processingTime: 0,
-        context: {
-          trinityAgentInterest: validatedData.trinityAgentInterest,
-          useCase: validatedData.useCase,
-          industry: validatedData.industry,
-          teamSize: validatedData.teamSize
-        },
-        category: 'trial_onboarding',
-        tags: ['trial', 'onboarding', 'signup'],
-        status: 'COMPLETED'
+    // Log initial AI interaction for trial setup (optional)
+    try {
+      // First check if Oracle agent exists
+      const oracleAgent = await prisma.aIAgent.findUnique({
+        where: { slug: 'oracle' }
+      })
+      
+      if (oracleAgent) {
+        await prisma.aIInteraction.create({
+          data: {
+            userId: user.id,
+            organizationId: organizationId,
+            agentId: oracleAgent.id,
+            query: `Trial signup: ${validatedData.useCase || 'Enterprise automation trial'}`,
+            response: `Welcome to Trinity Agents! Your 14-day trial includes Oracle Analytics, Sentinel Monitoring, and Sage Optimization.`,
+            confidence: 1.0,
+            processingTime: 0,
+            context: {
+              trinityAgentInterest: validatedData.trinityAgentInterest,
+              useCase: validatedData.useCase,
+              industry: validatedData.industry,
+              teamSize: validatedData.teamSize
+            },
+            category: 'trial_onboarding',
+            tags: ['trial', 'onboarding', 'signup'],
+            status: 'COMPLETED'
+          }
+        })
       }
-    })
+    } catch (aiError) {
+      // AI interaction creation is optional, continue with registration
+      console.log('AI interaction creation skipped:', aiError.message)
+    }
     
     // TODO: Send welcome email with Trinity Agent trial access
     // await sendTrialWelcomeEmail(user)
@@ -104,8 +116,6 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        trialStatus: user.trialStatus,
-        trialEndDate: user.trialEndDate,
         accessUrl: `/trial-dashboard?user=${user.id}`,
       },
       trialAccess: {
@@ -113,7 +123,7 @@ export async function POST(request: NextRequest) {
         sentinel: validatedData.trinityAgentInterest?.includes('Sentinel') ?? false,
         sage: validatedData.trinityAgentInterest?.includes('Sage') ?? false,
         dashboardUrl: `/trial-dashboard`,
-        expiresAt: user.trialEndDate,
+        expiresAt: trialEndDate,
       }
     }, { status: 201 })
     
