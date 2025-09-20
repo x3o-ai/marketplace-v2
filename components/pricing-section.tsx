@@ -139,23 +139,21 @@ export default function PricingSection() {
                     <div className="relative h-[60px] flex items-center text-[#37322F] text-5xl font-medium leading-[60px] font-serif">
                       <span className="invisible">${pricing.starter[billingPeriod]}</span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "annually" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "annually"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.starter.annually}
                       </span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "monthly" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "monthly"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.starter.monthly}
@@ -222,23 +220,21 @@ export default function PricingSection() {
                     <div className="relative h-[60px] flex items-center text-[#F0EFEE] text-5xl font-medium leading-[60px] font-serif">
                       <span className="invisible">${pricing.professional[billingPeriod]}</span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "annually" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "annually"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.professional.annually}
                       </span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "monthly" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "monthly"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.professional.monthly}
@@ -307,23 +303,21 @@ export default function PricingSection() {
                     <div className="relative h-[60px] flex items-center text-[#37322F] text-5xl font-medium leading-[60px] font-serif">
                       <span className="invisible">${pricing.enterprise[billingPeriod]}</span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "annually" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "annually"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.enterprise.annually}
                       </span>
                       <span
-                        className="absolute inset-0 flex items-center transition-all duration-500"
-                        style={{
-                          opacity: billingPeriod === "monthly" ? 1 : 0,
-                          transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
-                          filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
-                        }}
+                        className={`absolute inset-0 flex items-center transition-all duration-500 ${
+                          billingPeriod === "monthly"
+                            ? "opacity-100 scale-100 filter-none"
+                            : "opacity-0 scale-90 blur-[4px]"
+                        }`}
                         aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.enterprise.monthly}

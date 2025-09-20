@@ -80,7 +80,7 @@ const YourWorkInSync: React.FC<YourWorkInSyncProps> = ({
         }}
       >
         {/* Remove the flip transformation and position messages normally */}
-        <div style={{ width: "356px", height: "216px", position: "relative", transform: "scale(1.1)" }}>
+  <div className="relative w-[356px] h-[216px] scale-110">
           {/* Message 1: Left side with avatar */}
           <div
             style={{

@@ -399,38 +399,38 @@ const NumbersThatSpeak: React.FC<NumbersThatSpeakProps> = ({
                                   }}
                                 >
                                   <div
-                                    style={{ height: "17.217px", width: "100%", display: "flex", alignItems: "center" }}
+                                    className="h-[17.217px] w-full flex items-center"
                                   >
                                     <div
-                                      style={{ width: "100%", height: "1px", backgroundColor: "rgba(0,0,0,0.05)" }}
+                                      className="w-full h-[1px] bg-[rgba(0,0,0,0.05)]"
                                     />
                                   </div>
                                   <div
-                                    style={{ height: "13.304px", width: "100%", display: "flex", alignItems: "center" }}
+                                    className="h-[13.304px] w-full flex items-center"
                                   >
                                     <div
-                                      style={{ width: "100%", height: "1px", backgroundColor: "rgba(0,0,0,0.05)" }}
+                                      className="w-full h-[1px] bg-[rgba(0,0,0,0.05)]"
                                     />
                                   </div>
                                   <div
-                                    style={{ height: "13.304px", width: "100%", display: "flex", alignItems: "center" }}
+                                    className="h-[13.304px] w-full flex items-center"
                                   >
                                     <div
-                                      style={{ width: "100%", height: "1px", backgroundColor: "rgba(0,0,0,0.05)" }}
+                                      className="w-full h-[1px] bg-[rgba(0,0,0,0.05)]"
                                     />
                                   </div>
                                   <div
-                                    style={{ height: "13.304px", width: "100%", display: "flex", alignItems: "center" }}
+                                    className="h-[13.304px] w-full flex items-center"
                                   >
                                     <div
-                                      style={{ width: "100%", height: "1px", backgroundColor: "rgba(0,0,0,0.05)" }}
+                                      className="w-full h-[1px] bg-[rgba(0,0,0,0.05)]"
                                     />
                                   </div>
                                   <div
-                                    style={{ height: "13.304px", width: "100%", display: "flex", alignItems: "center" }}
+                                    className="h-[13.304px] w-full flex items-center"
                                   >
                                     <div
-                                      style={{ width: "100%", height: "1px", backgroundColor: "rgba(0,0,0,0.05)" }}
+                                      className="w-full h-[1px] bg-[rgba(0,0,0,0.05)]"
                                     />
                                   </div>
                                   <div
@@ -462,8 +462,8 @@ const NumbersThatSpeak: React.FC<NumbersThatSpeakProps> = ({
                                     width: "100%",
                                   }}
                                 >
-                                  <div style={{ whiteSpace: "pre" }}>Aug 2023</div>
-                                  <div style={{ whiteSpace: "pre" }}>Aug 2024</div>
+                                  <div className="whitespace-pre">Aug 2023</div>
+                                  <div className="whitespace-pre">Aug 2024</div>
                                 </div>
                               </div>
                             </div>
