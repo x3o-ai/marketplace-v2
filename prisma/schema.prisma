@@ -120,7 +120,7 @@ model Organization {
   
   // Configuration
   settings     Json? // Organization-specific settings
-  integrations Json? // External integrations config
+  integrationConfig Json? // External integrations config
   
   // Timestamps
   createdAt DateTime @default(now())
@@ -134,6 +134,7 @@ model Organization {
   reports            Report[]
   integrations       Integration[]
   auditLogs          AuditLog[]
+  webhooks           Webhook[]
 
   @@map("organizations")
 }

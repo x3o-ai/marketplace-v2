@@ -66,28 +66,9 @@ const NumbersThatSpeak: React.FC<NumbersThatSpeakProps> = ({
       data-node-id="454:5856"
     >
       {/* Root positioning container - exact match to Figma */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
-          top: "calc(50% + 23.703px)",
-        }}
-      >
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 'calc(50% + 23.703px)' }}>
         {/* Small dashboard card - back layer */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            top: "calc(50% - 19.427px)",
-            width: "270px",
-            height: "199.565px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center" style={{ top: 'calc(50% - 19.427px)', width: '270px', height: '199.565px' }}>
           <div>
             <div
               className="border border-[rgba(0,0,0,0.08)]"
@@ -114,19 +95,7 @@ const NumbersThatSpeak: React.FC<NumbersThatSpeakProps> = ({
         </div>
 
         {/* Medium dashboard card - middle layer */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            top: "calc(50% + 12.573px)",
-            width: "330px",
-            height: "243.913px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center" style={{ top: 'calc(50% + 12.573px)', width: '330px', height: '243.913px' }}>
           <div>
             <div
               className="border border-[rgba(0,0,0,0.08)]"
@@ -153,43 +122,9 @@ const NumbersThatSpeak: React.FC<NumbersThatSpeakProps> = ({
         </div>
 
         {/* Large dashboard card - front layer with full content */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            top: "calc(50% + 33.573px)",
-            width: "360px",
-            height: "266.087px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center" style={{ top: 'calc(50% + 33.573px)', width: '360px', height: '266.087px' }}>
           <div>
-            <div
-              className="border border-[rgba(0,0,0,0.08)]"
-              style={{
-                width: "360px",
-                height: "266.087px",
-                background: "var(--nts-surface)",
-                borderRadius: "6.261px",
-                boxShadow:
-                  "0px 0px 0px 0.783px rgba(47,48,55,0.12), 0px 1.565px 3.13px -0.783px rgba(47,48,55,0.06), 0px 2.348px 4.696px -1.174px rgba(47,48,55,0.06)",
-                maskImage: `url('${imgSchedule}')`,
-                maskPosition: "-36.766px -21.051px",
-                maskSize: "430.746px 270.521px",
-                maskRepeat: "no-repeat",
-                overflow: "hidden",
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-start",
-                alignItems: "flex-start",
-                padding: "18.783px",
-                boxSizing: "border-box",
-              }}
-            >
+            <div className="border border-[rgba(0,0,0,0.08)]" style={{ width: '360px', height: '266.087px', background: 'var(--nts-surface)', borderRadius: '6.261px', boxShadow: '0px 0px 0px 0.783px rgba(47,48,55,0.12), 0px 1.565px 3.13px -0.783px rgba(47,48,55,0.06), 0px 2.348px 4.696px -1.174px rgba(47,48,55,0.06)', maskImage: `url('${imgSchedule}')`, maskPosition: '-36.766px -21.051px', maskSize: '430.746px 270.521px', maskRepeat: 'no-repeat', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', padding: '18.783px', boxSizing: 'border-box' }}>
               <div
                 style={{
                   display: "flex",

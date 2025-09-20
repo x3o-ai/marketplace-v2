@@ -54,7 +54,7 @@ const emailTemplates = {
       <div style="background: #e6f7ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3>📊 Your 3-Day Results:</h3>
         <ul>
-          <li><strong>${{costSavings}}</strong> in projected monthly savings</li>
+          <li><strong>{{costSavings}}</strong> in projected monthly savings</li>
           <li><strong>{{timeReduced}} hours</strong> saved on manual tasks</li>
           <li><strong>{{accuracy}}%</strong> accuracy on predictions</li>
         </ul>
@@ -82,7 +82,7 @@ const emailTemplates = {
       <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3>📈 Week 1 Impact:</h3>
         <ul>
-          <li><strong>${{weeklyROI}}</strong> in business value generated</li>
+          <li><strong>{{weeklyROI}}</strong> in business value generated</li>
           <li><strong>{{agentInteractions}}</strong> Trinity Agent interactions</li>
           <li><strong>{{insights}}</strong> actionable insights delivered</li>
         </ul>
@@ -111,7 +111,7 @@ const emailTemplates = {
         <h3>⚠️ Trial Ending Soon:</h3>
         <p><strong>{{daysLeft}} days remaining</strong> to continue these results:</p>
         <ul>
-          <li><strong>${{totalSavings}}</strong> in monthly savings potential</li>
+          <li><strong>{{totalSavings}}</strong> in monthly savings potential</li>
           <li><strong>{{efficiencyGain}}%</strong> efficiency improvement</li>
           <li><strong>{{automationHours}}</strong> hours of manual work automated</li>
         </ul>
@@ -137,7 +137,7 @@ const emailTemplates = {
       <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #dc2626;">
         <h3 style="color: #dc2626;">⏰ Expiring in 24 Hours:</h3>
         <ul>
-          <li><strong>${{costSavings}}/month</strong> in automation savings</li>
+          <li><strong>{{costSavings}}/month</strong> in automation savings</li>
           <li><strong>Oracle Analytics</strong> with 94% prediction accuracy</li>
           <li><strong>Sentinel Monitoring</strong> with 99.8% uptime optimization</li>
           <li><strong>Sage Optimization</strong> with 87% engagement improvements</li>
@@ -248,14 +248,14 @@ export async function POST(request: NextRequest) {
       html: template.template
         .replace(/{{name}}/g, user.name || 'Valued Customer')
         .replace(/{{dashboardUrl}}/g, process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
-        .replace(/{{costSavings}}/g, realROI.costSavings)
+        .replace(/{{costSavings}}/g, `$${realROI.costSavings}`)
         .replace(/{{timeReduced}}/g, realROI.timeReduced)
         .replace(/{{accuracy}}/g, realROI.accuracy)
-        .replace(/{{weeklyROI}}/g, realROI.weeklyROI)
+        .replace(/{{weeklyROI}}/g, `$${realROI.weeklyROI}`)
         .replace(/{{agentInteractions}}/g, realROI.agentInteractions)
         .replace(/{{insights}}/g, realROI.insights)
         .replace(/{{daysLeft}}/g, daysLeft.toString())
-        .replace(/{{totalSavings}}/g, realROI.costSavings)
+        .replace(/{{totalSavings}}/g, `$${realROI.costSavings}`)
         .replace(/{{efficiencyGain}}/g, realROI.efficiencyGain)
         .replace(/{{automationHours}}/g, realROI.automationHours)
         .replace(/{{planName}}/g, 'OracleTrinity Analytics')
