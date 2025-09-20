@@ -24,7 +24,7 @@ export default function PricingSection() {
     <div className="w-full flex flex-col justify-center items-center gap-2">
       {/* Header Section */}
       <div className="self-stretch px-6 md:px-24 py-12 md:py-16 border-b border-[rgba(55,50,47,0.12)] flex justify-center items-center gap-6">
-        <div className="w-full max-w-[586px] px-6 py-5 shadow-[0px_2px_4px_rgba(50,45,43,0.06)] overflow-hidden rounded-lg flex flex-col justify-start items-center gap-4 shadow-none">
+  <div className="w-full max-w-[586px] px-6 py-5 shadow-[0px_2px_4px_rgba(50,45,43,0.06)] overflow-hidden rounded-lg flex flex-col justify-start items-center gap-4">
           {/* Pricing Badge */}
           <div className="px-[14px] py-[6px] bg-white shadow-[0px_0px_0px_4px_rgba(55,50,47,0.05)] overflow-hidden rounded-[90px] flex justify-start items-center gap-[8px] border border-[rgba(2,6,23,0.08)] shadow-xs">
             <div className="w-[14px] h-[14px] relative overflow-hidden flex items-center justify-center">
@@ -145,7 +145,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "annually"}
+                        aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.starter.annually}
                       </span>
@@ -156,7 +156,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "monthly"}
+                        aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.starter.monthly}
                       </span>
@@ -228,7 +228,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "annually"}
+                        aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.professional.annually}
                       </span>
@@ -239,7 +239,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "monthly"}
+                        aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.professional.monthly}
                       </span>
@@ -313,7 +313,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "annually" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "annually" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "annually"}
+                        aria-hidden={billingPeriod !== "annually" ? "true" : "false"}
                       >
                         ${pricing.enterprise.annually}
                       </span>
@@ -324,7 +324,7 @@ export default function PricingSection() {
                           transform: `scale(${billingPeriod === "monthly" ? 1 : 0.8})`,
                           filter: `blur(${billingPeriod === "monthly" ? 0 : 4}px)`,
                         }}
-                        aria-hidden={billingPeriod !== "monthly"}
+                        aria-hidden={billingPeriod !== "monthly" ? "true" : "false"}
                       >
                         ${pricing.enterprise.monthly}
                       </span>

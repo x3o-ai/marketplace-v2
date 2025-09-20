@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import Stripe from 'stripe'
+import { prisma } from '@/lib/prisma'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+})
 
 // Subscription creation schema
 const subscriptionSchema = z.object({
@@ -61,14 +67,84 @@ export async function POST(request: NextRequest) {
     const selectedPlan = pricingTiers[validatedData.plan]
     const priceAmount = selectedPlan[validatedData.billingPeriod] * validatedData.seats
     
-    // TODO: Initialize Stripe here
-    // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { id: validatedData.userId },
+      include: { organization: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        message: 'User not found',
+      }, { status: 404 })
+    }
+
+    // Create customer in Stripe
+    const customer = await stripe.customers.create({
+      email: validatedData.email,
+      name: user.name || undefined,
+      metadata: {
+        userId: validatedData.userId,
+        company: validatedData.company || user.organization?.name || '',
+        plan: validatedData.plan,
+        source: 'x3o_marketplace'
+      }
+    })
+
+    // Create Stripe price if it doesn't exist (for demo purposes)
+    const priceId = `price_${validatedData.plan}_${validatedData.billingPeriod}`
+    let stripePrice
     
-    // For now, simulate Stripe subscription creation
+    try {
+      stripePrice = await stripe.prices.retrieve(priceId)
+    } catch (error) {
+      // Create price if it doesn't exist
+      const product = await stripe.products.create({
+        name: selectedPlan.name,
+        description: `Trinity Agent ${selectedPlan.name} - ${selectedPlan.features.slice(0, 3).join(', ')}`,
+        metadata: {
+          plan: validatedData.plan,
+          features: selectedPlan.features.join(',')
+        }
+      })
+
+      stripePrice = await stripe.prices.create({
+        unit_amount: priceAmount * 100, // Stripe uses cents
+        currency: 'usd',
+        recurring: {
+          interval: validatedData.billingPeriod === 'monthly' ? 'month' : 'year'
+        },
+        product: product.id,
+        metadata: {
+          plan: validatedData.plan,
+          billing_period: validatedData.billingPeriod
+        }
+      })
+    }
+
+    // Create subscription in Stripe
+    const stripeSubscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{
+        price: stripePrice.id,
+        quantity: validatedData.seats
+      }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
+      metadata: {
+        userId: validatedData.userId,
+        plan: validatedData.plan,
+        company: validatedData.company || '',
+        source: 'x3o_marketplace'
+      }
+    })
+
     const subscription = {
-      id: `sub_${Date.now()}`,
-      customer: `cus_${Date.now()}`,
-      status: 'active',
+      id: stripeSubscription.id,
+      customer: customer.id,
+      status: stripeSubscription.status,
       plan: {
         id: `${validatedData.plan}_${validatedData.billingPeriod}`,
         name: selectedPlan.name,
@@ -77,34 +153,12 @@ export async function POST(request: NextRequest) {
         interval: validatedData.billingPeriod,
         seats: validatedData.seats
       },
-      trialEnd: null, // No trial period for paid subscriptions
-      currentPeriodStart: new Date().toISOString(),
-      currentPeriodEnd: new Date(Date.now() + (validatedData.billingPeriod === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString(),
+      trialEnd: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000).toISOString() : null,
+      currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+      currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
       features: selectedPlan.features,
-      created: new Date().toISOString()
+      created: new Date(stripeSubscription.created * 1000).toISOString()
     }
-
-    // TODO: Create customer in Stripe
-    // const customer = await stripe.customers.create({
-    //   email: validatedData.email,
-    //   metadata: {
-    //     userId: validatedData.userId,
-    //     company: validatedData.company || '',
-    //     plan: validatedData.plan
-    //   }
-    // })
-
-    // TODO: Create subscription in Stripe
-    // const stripeSubscription = await stripe.subscriptions.create({
-    //   customer: customer.id,
-    //   items: [{
-    //     price: `price_${validatedData.plan}_${validatedData.billingPeriod}`,
-    //     quantity: validatedData.seats
-    //   }],
-    //   payment_behavior: 'default_incomplete',
-    //   payment_settings: { save_default_payment_method: 'on_subscription' },
-    //   expand: ['latest_invoice.payment_intent'],
-    // })
 
     // TODO: Save subscription to database
     // await prisma.subscription.create({
