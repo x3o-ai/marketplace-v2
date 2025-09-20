@@ -5,18 +5,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Loader2, Brain, Shield, Sparkles, CheckCircle } from 'lucide-react'
 
 interface SignupFormProps {
-  onSuccess?: (userData: any) => void
+  onSuccess?: (data: any) => void
   onError?: (error: string) => void
-  className?: string
 }
 
-export function SignupForm({ onSuccess, onError, className }: SignupFormProps) {
+export function SignupForm({ onSuccess, onError }: SignupFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -24,13 +23,83 @@ export function SignupForm({ onSuccess, onError, className }: SignupFormProps) {
     company: '',
     role: '',
     industry: '',
-    trinityAgentInterest: [] as string[],
-    useCase: '',
     teamSize: '',
+    useCase: '',
+    trinityAgentInterest: [] as string[]
   })
+
+  const trinityAgents = [
+    {
+      id: 'Oracle',
+      name: 'Oracle Analytics',
+      description: 'Advanced business intelligence with predictive analytics',
+      icon: Brain,
+      color: 'text-green-600 bg-green-100 border-green-200'
+    },
+    {
+      id: 'Sentinel',
+      name: 'Sentinel Monitoring',
+      description: '24/7 autonomous system monitoring and optimization',
+      icon: Shield,
+      color: 'text-blue-600 bg-blue-100 border-blue-200'
+    },
+    {
+      id: 'Sage',
+      name: 'Sage Optimization',
+      description: 'Intelligent content generation and process automation',
+      icon: Sparkles,
+      color: 'text-purple-600 bg-purple-100 border-purple-200'
+    }
+  ]
+
+  const industries = [
+    'Technology',
+    'Financial Services',
+    'Healthcare',
+    'Manufacturing',
+    'Retail & E-commerce',
+    'Education',
+    'Government',
+    'Other'
+  ]
+
+  const roles = [
+    'CEO/Founder',
+    'CTO/VP Engineering',
+    'Data Scientist',
+    'Product Manager',
+    'Operations Manager',
+    'Business Analyst',
+    'Developer',
+    'Other'
+  ]
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleTrinityAgentToggle = (agentId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trinityAgentInterest: prev.trinityAgentInterest.includes(agentId)
+        ? prev.trinityAgentInterest.filter(id => id !== agentId)
+        : [...prev.trinityAgentInterest, agentId]
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!formData.email || !formData.name) {
+      onError?.('Please fill in all required fields')
+      return
+    }
+
+    if (formData.trinityAgentInterest.length === 0) {
+      onError?.('Please select at least one Trinity Agent to trial')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -45,8 +114,6 @@ export function SignupForm({ onSuccess, onError, className }: SignupFormProps) {
       const result = await response.json()
 
       if (result.success) {
-        // Redirect to trial dashboard
-        window.location.href = result.user.accessUrl
         onSuccess?.(result)
       } else {
         onError?.(result.message || 'Registration failed')
@@ -59,201 +126,192 @@ export function SignupForm({ onSuccess, onError, className }: SignupFormProps) {
     }
   }
 
-  const handleAgentInterestChange = (agent: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      trinityAgentInterest: checked 
-        ? [...prev.trinityAgentInterest, agent]
-        : prev.trinityAgentInterest.filter(a => a !== agent)
-    }))
-  }
-
   return (
-    <Card className={cn("w-full max-w-2xl mx-auto", className)}>
+    <Card className="w-full max-w-2xl">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-semibold text-[#37322F]">
           Start Your Trinity Agent Trial
         </CardTitle>
-        <CardDescription className="text-[#605A57]">
-          Get 14-day free access to enterprise AI automation. No credit card required.
+        <CardDescription>
+          Get 14 days of full enterprise access to Oracle, Sentinel, and Sage
         </CardDescription>
+        <div className="flex justify-center">
+          <Badge className="bg-green-100 text-green-700 border-green-200">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            No Credit Card Required
+          </Badge>
+        </div>
       </CardHeader>
-      
+
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-[#37322F] font-medium">Full Name *</Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-                className="border-[#E0DEDB] focus:border-[#37322F]"
-                placeholder="John Smith"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#37322F] font-medium">Business Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                required
-                className="border-[#E0DEDB] focus:border-[#37322F]"
-                placeholder="john@company.com"
-              />
+          <div className="space-y-4">
+            <h3 className="font-medium text-[#37322F]">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name *</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="John Smith"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Business Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="john@company.com"
+                  required
+                />
+              </div>
             </div>
           </div>
 
           {/* Company Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="company" className="text-[#37322F] font-medium">Company</Label>
-              <Input
-                id="company"
-                type="text"
-                value={formData.company}
-                onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                className="border-[#E0DEDB] focus:border-[#37322F]"
-                placeholder="Acme Corporation"
-              />
+          <div className="space-y-4">
+            <h3 className="font-medium text-[#37322F]">Company Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company">Company Name</Label>
+                <Input
+                  id="company"
+                  type="text"
+                  value={formData.company}
+                  onChange={(e) => handleInputChange('company', e.target.value)}
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Your Role</Label>
+                <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role} value={role}>{role}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Select value={formData.industry} onValueChange={(value) => handleInputChange('industry', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industries.map((industry) => (
+                      <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="teamSize">Team Size</Label>
+                <Select value={formData.teamSize} onValueChange={(value) => handleInputChange('teamSize', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select team size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1-10">1-10 people</SelectItem>
+                    <SelectItem value="11-50">11-50 people</SelectItem>
+                    <SelectItem value="51-200">51-200 people</SelectItem>
+                    <SelectItem value="200+">200+ people</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Trinity Agent Selection */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-[#37322F] mb-2">Select Trinity Agents to Trial *</h3>
+              <p className="text-sm text-[#605A57] mb-4">Choose the AI agents you'd like to experience during your trial</p>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="role" className="text-[#37322F] font-medium">Role</Label>
-              <Input
-                id="role"
-                type="text"
-                value={formData.role}
-                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                className="border-[#E0DEDB] focus:border-[#37322F]"
-                placeholder="CEO, CTO, Data Analyst..."
-              />
-            </div>
-          </div>
-
-          {/* Business Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="industry" className="text-[#37322F] font-medium">Industry</Label>
-              <Select value={formData.industry} onValueChange={(value) => setFormData(prev => ({ ...prev, industry: value }))}>
-                <SelectTrigger className="border-[#E0DEDB] focus:border-[#37322F]">
-                  <SelectValue placeholder="Select industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="healthcare">Healthcare</SelectItem>
-                  <SelectItem value="finance">Financial Services</SelectItem>
-                  <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="retail">Retail & E-commerce</SelectItem>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="consulting">Consulting</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="teamSize" className="text-[#37322F] font-medium">Team Size</Label>
-              <Select value={formData.teamSize} onValueChange={(value) => setFormData(prev => ({ ...prev, teamSize: value }))}>
-                <SelectTrigger className="border-[#E0DEDB] focus:border-[#37322F]">
-                  <SelectValue placeholder="Select team size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1-10">1-10 employees</SelectItem>
-                  <SelectItem value="11-50">11-50 employees</SelectItem>
-                  <SelectItem value="51-200">51-200 employees</SelectItem>
-                  <SelectItem value="200+">200+ employees</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Trinity Agent Interest */}
-          <div className="space-y-3">
-            <Label className="text-[#37322F] font-medium">Which Trinity Agents interest you most?</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="flex items-center space-x-3 p-3 border border-[#E0DEDB] rounded-lg hover:bg-[#F7F5F3] transition-colors">
-                <Checkbox
-                  id="oracle"
-                  checked={formData.trinityAgentInterest.includes('Oracle')}
-                  onCheckedChange={(checked) => handleAgentInterestChange('Oracle', checked as boolean)}
-                />
-                <div className="flex-1">
-                  <Label htmlFor="oracle" className="text-sm font-medium text-[#37322F] cursor-pointer">
-                    Oracle Analytics
-                  </Label>
-                  <p className="text-xs text-[#605A57]">Business intelligence & predictive analytics</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3 p-3 border border-[#E0DEDB] rounded-lg hover:bg-[#F7F5F3] transition-colors">
-                <Checkbox
-                  id="sentinel"
-                  checked={formData.trinityAgentInterest.includes('Sentinel')}
-                  onCheckedChange={(checked) => handleAgentInterestChange('Sentinel', checked as boolean)}
-                />
-                <div className="flex-1">
-                  <Label htmlFor="sentinel" className="text-sm font-medium text-[#37322F] cursor-pointer">
-                    Sentinel Monitoring
-                  </Label>
-                  <p className="text-xs text-[#605A57]">Autonomous system monitoring & optimization</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3 p-3 border border-[#E0DEDB] rounded-lg hover:bg-[#F7F5F3] transition-colors">
-                <Checkbox
-                  id="sage"
-                  checked={formData.trinityAgentInterest.includes('Sage')}
-                  onCheckedChange={(checked) => handleAgentInterestChange('Sage', checked as boolean)}
-                />
-                <div className="flex-1">
-                  <Label htmlFor="sage" className="text-sm font-medium text-[#37322F] cursor-pointer">
-                    Sage Optimization
-                  </Label>
-                  <p className="text-xs text-[#605A57]">Intelligent process automation</p>
-                </div>
-              </div>
+            <div className="grid gap-3">
+              {trinityAgents.map((agent) => {
+                const Icon = agent.icon
+                const isSelected = formData.trinityAgentInterest.includes(agent.id)
+                
+                return (
+                  <div
+                    key={agent.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'border-[#37322F] bg-[#37322F]/5' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleTrinityAgentToggle(agent.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => handleTrinityAgentToggle(agent.id)}
+                        className="mt-1"
+                      />
+                      <div className={`p-2 rounded-lg ${agent.color}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-[#37322F]">{agent.name}</div>
+                        <div className="text-sm text-[#605A57] mt-1">{agent.description}</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           {/* Use Case */}
           <div className="space-y-2">
-            <Label htmlFor="useCase" className="text-[#37322F] font-medium">What's your primary automation goal?</Label>
-            <Textarea
+            <Label htmlFor="useCase">Primary Use Case (Optional)</Label>
+            <textarea
               id="useCase"
               value={formData.useCase}
-              onChange={(e) => setFormData(prev => ({ ...prev, useCase: e.target.value }))}
-              className="border-[#E0DEDB] focus:border-[#37322F] min-h-[80px]"
-              placeholder="Describe what you'd like to automate (e.g., data analysis, content generation, system monitoring...)"
+              onChange={(e) => handleInputChange('useCase', e.target.value)}
+              placeholder="Tell us how you plan to use Trinity Agents in your organization..."
+              className="w-full min-h-[80px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#37322F] focus:border-transparent resize-none"
             />
           </div>
 
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={isLoading || !formData.email || !formData.name}
-            className="w-full h-12 bg-[#37322F] hover:bg-[#2A2520] text-white font-medium text-base rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
+            disabled={isLoading || formData.trinityAgentInterest.length === 0}
+            className="w-full h-12 bg-[#37322F] hover:bg-[#2A2520] text-white font-medium text-base"
           >
             {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Creating Your Trial Access...</span>
-              </div>
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Setting up your Trinity Agent trial...
+              </>
             ) : (
-              'Start 14-Day Trinity Agent Trial'
+              <>
+                <Sparkles className="h-5 w-5 mr-2" />
+                Start My Trinity Agent Trial
+              </>
             )}
           </Button>
 
-          {/* Trial Benefits */}
-          <div className="text-center text-sm text-[#605A57] space-y-1">
-            <p>✅ 14-day free access to all Trinity Agents</p>
-            <p>✅ No credit card required • Cancel anytime</p>
-            <p>✅ Full enterprise features included</p>
+          <div className="text-center">
+            <p className="text-xs text-[#605A57]">
+              By signing up, you agree to our Terms of Service and Privacy Policy.
+              <br />
+              Your 14-day trial includes full access to all selected Trinity Agents.
+            </p>
           </div>
         </form>
       </CardContent>

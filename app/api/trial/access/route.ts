@@ -1,249 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { executeTrialInteraction, getTrialStatus, verifyTrialAccessToken } from '@/lib/trinity-agents'
 
-// Trial access schema
+// Enhanced Trinity Agent trial access schema
 const trialAccessSchema = z.object({
   userId: z.string(),
   agentType: z.enum(['oracle', 'sentinel', 'sage']),
-  action: z.enum(['query', 'monitor', 'generate']),
-  data: z.object({}).passthrough(), // Allow any additional data
+  action: z.enum(['query', 'interact', 'status']),
+  query: z.string().optional(),
+  context: z.object({}).passthrough().optional(),
+  accessToken: z.string().optional()
 })
-
-// Sample Trinity Agent responses for trial users
-const sampleResponses = {
-  oracle: {
-    query: {
-      prediction: "Based on current trends, revenue will increase 14.2% next quarter",
-      confidence: 94,
-      factors: [
-        "Customer retention up 7%",
-        "Market expansion opportunities identified",
-        "Seasonal demand patterns favorable"
-      ],
-      recommendation: "Increase marketing spend by 15% to capitalize on growth potential"
-    },
-    insights: [
-      "Customer churn risk decreased to 2.3%",
-      "Product demand spike predicted for Q2",
-      "Marketing ROI improved 23% month-over-month"
-    ]
-  },
-  sentinel: {
-    monitoring: {
-      systemHealth: 99.8,
-      alertsPrevented: 15,
-      optimizations: [
-        "Database query performance improved 34%",
-        "Memory usage reduced 18%", 
-        "API response times improved 45ms"
-      ],
-      uptime: "99.97% this month"
-    },
-    alerts: [
-      "Potential performance bottleneck detected and resolved",
-      "Security vulnerability patched automatically",
-      "System capacity optimization completed"
-    ]
-  },
-  sage: {
-    generation: {
-      contentCreated: 47,
-      engagementRate: 87,
-      campaignPerformance: "+67% above baseline",
-      optimizations: [
-        "Email subject line performance improved 34%",
-        "Content production time reduced 78%",
-        "Brand consistency score: 91%"
-      ]
-    },
-    suggestions: [
-      "A/B test new email templates for 23% better engagement",
-      "Optimize content calendar for seasonal trends",
-      "Automate social media posting for 40% time savings"
-    ]
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validatedData = trialAccessSchema.parse(body)
     
-    // Check actual trial status from database
-    const user = await prisma.user.findUnique({
-      where: { id: validatedData.userId },
-      include: {
-        organization: true,
-        aiInteractions: {
-          orderBy: { createdAt: 'desc' },
-          take: 10
-        }
+    // Verify access token if provided
+    if (validatedData.accessToken) {
+      const tokenData = verifyTrialAccessToken(validatedData.accessToken)
+      if (!tokenData || tokenData.userId !== validatedData.userId || tokenData.agentType !== validatedData.agentType) {
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid or expired access token',
+          error: 'INVALID_TOKEN'
+        }, { status: 401 })
       }
-    })
+    }
 
-    if (!user) {
+    // Get current trial status
+    const trialStatus = await getTrialStatus(validatedData.userId)
+    if (!trialStatus) {
       return NextResponse.json({
         success: false,
-        message: 'User not found',
-        error: 'USER_NOT_FOUND'
+        message: 'Trial access not found or expired',
+        error: 'TRIAL_NOT_FOUND'
       }, { status: 404 })
     }
 
-    // Check trial status (for now, assume all users have active trials)
-    const trialEndDate = new Date(user.createdAt)
-    trialEndDate.setDate(trialEndDate.getDate() + 14)
-    const isValidTrial = new Date() < trialEndDate
-
-    if (!isValidTrial) {
+    if (trialStatus.status !== 'ACTIVE') {
       return NextResponse.json({
         success: false,
-        message: 'Trial access expired',
+        message: 'Trial access has expired',
         error: 'TRIAL_EXPIRED',
-        trialEndDate: trialEndDate.toISOString()
+        trialStatus
       }, { status: 403 })
     }
 
-    // Generate real Trinity Agent response and log to database
-    let response
-    let aiInteraction
-    
-    switch (validatedData.agentType) {
-      case 'oracle':
-        // Create real Oracle interaction in database
-        aiInteraction = await prisma.aIInteraction.create({
-          data: {
-            userId: validatedData.userId,
-            organizationId: user.organizationId,
-            agentId: 'oracle',
-            agentVersion: '1.0.0',
-            query: validatedData.data.query || 'Business analytics query',
-            response: JSON.stringify(sampleResponses.oracle.query),
-            confidence: 0.94,
-            processingTime: Math.floor(Math.random() * 500) + 100,
-            context: validatedData.data,
-            category: 'business_intelligence',
-            tags: ['trial', 'oracle', 'analytics'],
-            status: 'COMPLETED'
-          }
+    // Handle different actions
+    switch (validatedData.action) {
+      case 'status':
+        return NextResponse.json({
+          success: true,
+          trialStatus,
+          message: 'Trial status retrieved successfully'
         })
 
-        response = {
-          agent: 'Oracle Analytics',
-          type: 'predictive_analysis',
-          data: sampleResponses.oracle.query,
-          insights: sampleResponses.oracle.insights,
-          timestamp: aiInteraction.createdAt.toISOString(),
-          interactionId: aiInteraction.id,
-          trialMetrics: {
-            queriesUsed: user.aiInteractions.filter(i => i.agentId === 'oracle').length + 1,
-            accuracyRate: 94,
-            insightsGenerated: user.aiInteractions.filter(i => i.agentId === 'oracle' && i.category === 'business_intelligence').length + 1
-          }
+      case 'query':
+      case 'interact':
+        if (!validatedData.query) {
+          return NextResponse.json({
+            success: false,
+            message: 'Query is required for interactions',
+            error: 'MISSING_QUERY'
+          }, { status: 400 })
         }
-        break
-        
-      case 'sentinel':
-        // Create real Sentinel interaction in database
-        aiInteraction = await prisma.aIInteraction.create({
-          data: {
-            userId: validatedData.userId,
-            organizationId: user.organizationId,
-            agentId: 'sentinel',
-            agentVersion: '1.0.0',
-            query: validatedData.data.query || 'System monitoring query',
-            response: JSON.stringify(sampleResponses.sentinel.monitoring),
-            confidence: 0.98,
-            processingTime: Math.floor(Math.random() * 300) + 50,
-            context: validatedData.data,
-            category: 'system_monitoring',
-            tags: ['trial', 'sentinel', 'monitoring'],
-            status: 'COMPLETED'
-          }
+
+        // Check usage limits before interaction
+        if (trialStatus.usage[validatedData.agentType] >= trialStatus.limits[validatedData.agentType]) {
+          return NextResponse.json({
+            success: false,
+            message: `${validatedData.agentType.charAt(0).toUpperCase() + validatedData.agentType.slice(1)} trial limit reached`,
+            error: 'USAGE_LIMIT_EXCEEDED',
+            trialStatus
+          }, { status: 429 })
+        }
+
+        // Execute Trinity Agent interaction
+        const response = await executeTrialInteraction(
+          validatedData.userId,
+          validatedData.agentType,
+          validatedData.query,
+          validatedData.context || {}
+        )
+
+        if (!response) {
+          return NextResponse.json({
+            success: false,
+            message: 'Failed to execute Trinity Agent interaction',
+            error: 'INTERACTION_FAILED'
+          }, { status: 500 })
+        }
+
+        // Get updated trial status after interaction
+        const updatedTrialStatus = await getTrialStatus(validatedData.userId)
+
+        return NextResponse.json({
+          success: true,
+          response,
+          trialStatus: updatedTrialStatus,
+          message: `${response.agent} interaction completed successfully`
         })
 
-        response = {
-          agent: 'Sentinel Monitoring',
-          type: 'system_monitoring',
-          data: sampleResponses.sentinel.monitoring,
-          alerts: sampleResponses.sentinel.alerts,
-          timestamp: aiInteraction.createdAt.toISOString(),
-          interactionId: aiInteraction.id,
-          trialMetrics: {
-            systemsMonitored: 15,
-            alertsPrevented: user.aiInteractions.filter(i => i.agentId === 'sentinel').length + 1,
-            uptimeImprovement: "99.8%"
-          }
-        }
-        break
-        
-      case 'sage':
-        // Create real Sage interaction in database
-        aiInteraction = await prisma.aIInteraction.create({
-          data: {
-            userId: validatedData.userId,
-            organizationId: user.organizationId,
-            agentId: 'sage',
-            agentVersion: '1.0.0',
-            query: validatedData.data.query || 'Content generation query',
-            response: JSON.stringify(sampleResponses.sage.generation),
-            confidence: 0.91,
-            processingTime: Math.floor(Math.random() * 800) + 200,
-            context: validatedData.data,
-            category: 'content_generation',
-            tags: ['trial', 'sage', 'optimization'],
-            status: 'COMPLETED'
-          }
-        })
-
-        response = {
-          agent: 'Sage Optimization',
-          type: 'content_generation',
-          data: sampleResponses.sage.generation,
-          suggestions: sampleResponses.sage.suggestions,
-          timestamp: aiInteraction.createdAt.toISOString(),
-          interactionId: aiInteraction.id,
-          trialMetrics: {
-            contentGenerated: user.aiInteractions.filter(i => i.agentId === 'sage').length + 1,
-            engagementImprovement: "87%",
-            timeReduced: "78%"
-          }
-        }
-        break
-        
       default:
-        throw new Error('Invalid agent type')
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid action specified',
+          error: 'INVALID_ACTION'
+        }, { status: 400 })
     }
-
-    // Log trial usage (TODO: Save to database)
-    const usageLog = {
-      userId: validatedData.userId,
-      agentType: validatedData.agentType,
-      action: validatedData.action,
-      timestamp: new Date().toISOString(),
-      response: response
-    }
-
-    return NextResponse.json({
-      success: true,
-      response,
-      trialStatus: {
-        daysRemaining: 14, // TODO: Calculate from actual trial start date
-        usage: {
-          oracle: Math.floor(Math.random() * 25) + 10,
-          sentinel: Math.floor(Math.random() * 20) + 8,
-          sage: Math.floor(Math.random() * 30) + 15
-        },
-        limits: {
-          oracle: 100,
-          sentinel: 50,
-          sage: 200
-        }
-      }
-    })
     
   } catch (error) {
-    console.error('Trial access error:', error)
+    console.error('Trinity Agent trial access error:', error)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json({
@@ -255,15 +124,17 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      message: 'Trial access failed. Please try again.',
+      message: 'Trinity Agent trial access failed. Please try again.',
+      error: 'INTERNAL_ERROR'
     }, { status: 500 })
   }
 }
 
-// Get trial status
+// Get comprehensive trial status
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('userId')
+  const agentType = searchParams.get('agentType') as 'oracle' | 'sentinel' | 'sage' | null
   
   if (!userId) {
     return NextResponse.json({
@@ -272,28 +143,63 @@ export async function GET(request: NextRequest) {
     }, { status: 400 })
   }
 
-  // TODO: Get actual trial status from database
-  const trialData = {
-    userId,
-    status: 'ACTIVE',
-    daysRemaining: 14,
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    usage: {
-      oracle: Math.floor(Math.random() * 25) + 10,
-      sentinel: Math.floor(Math.random() * 20) + 8,
-      sage: Math.floor(Math.random() * 30) + 15
-    },
-    metrics: {
-      totalQueries: Math.floor(Math.random() * 75) + 25,
-      avgAccuracy: 94,
-      timeSaved: Math.floor(Math.random() * 50) + 20,
-      costSavings: Math.floor(Math.random() * 50000) + 25000
+  try {
+    const trialStatus = await getTrialStatus(userId)
+    
+    if (!trialStatus) {
+      return NextResponse.json({
+        success: false,
+        message: 'Trial not found',
+        error: 'TRIAL_NOT_FOUND'
+      }, { status: 404 })
     }
-  }
 
-  return NextResponse.json({
-    success: true,
-    trial: trialData
-  })
+    // If specific agent type requested, include detailed metrics
+    let agentMetrics = {}
+    if (agentType && ['oracle', 'sentinel', 'sage'].includes(agentType)) {
+      agentMetrics = {
+        [`${agentType}Metrics`]: {
+          usageCount: trialStatus.usage[agentType],
+          limit: trialStatus.limits[agentType],
+          remainingInteractions: Math.max(0, trialStatus.limits[agentType] - trialStatus.usage[agentType]),
+          usagePercentage: Math.round((trialStatus.usage[agentType] / trialStatus.limits[agentType]) * 100),
+          accessToken: trialStatus.accessTokens[agentType]
+        }
+      }
+    }
+
+    // Calculate overall trial progress
+    const totalUsage = Object.values(trialStatus.usage).reduce((sum, count) => sum + count, 0)
+    const totalLimits = Object.values(trialStatus.limits).reduce((sum, limit) => sum + limit, 0)
+    const overallProgress = Math.round((totalUsage / totalLimits) * 100)
+
+    // Estimate ROI and cost savings based on usage
+    const estimatedMonthlySavings = Math.floor(totalUsage * 650 + 25000) // Base calculation
+    const timeReduced = Math.floor(totalUsage * 2.8 + 18) // Hours saved
+    const efficiencyGain = Math.min(400, Math.floor(totalUsage * 12 + 85)) // Efficiency percentage
+
+    return NextResponse.json({
+      success: true,
+      trial: {
+        ...trialStatus,
+        overallProgress,
+        totalUsage,
+        totalLimits,
+        estimatedROI: {
+          monthlySavings: `$${estimatedMonthlySavings.toLocaleString()}`,
+          timeReduced: `${timeReduced} hours per week`,
+          efficiencyGain: `${efficiencyGain}%`,
+          accuracyImprovement: '94.2%'
+        },
+        ...agentMetrics
+      }
+    })
+  } catch (error) {
+    console.error('Error retrieving trial status:', error)
+    return NextResponse.json({
+      success: false,
+      message: 'Failed to retrieve trial status',
+      error: 'INTERNAL_ERROR'
+    }, { status: 500 })
+  }
 }
