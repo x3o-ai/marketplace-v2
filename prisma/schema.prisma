@@ -1,0 +1,806 @@
+// FlexaBrain Enterprise Dashboard - Database Schema
+// Comprehensive schema for Trinity AI agents, business metrics, and enterprise features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MANAGEMENT & AUTHENTICATION
+// ============================================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // Enterprise fields
+  organizationId String?
+  department     String?
+  jobTitle       String?
+  permissions    String[] // JSON array of permissions
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?
+  
+  // Relations
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  accounts     Account[]
+  sessions     Session[]
+  aiInteractions AIInteraction[]
+  dashboards   Dashboard[]
+  reports      Report[]
+  auditLogs    AuditLog[]
+  createdMetrics BusinessMetric[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  MANAGER
+  ANALYST
+  USER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+// ============================================================================
+// ORGANIZATION & TENANT MANAGEMENT
+// ============================================================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?  @unique
+  industry    String?
+  size        String?
+  logo        String?
+  
+  // Subscription & Billing
+  subscription SubscriptionTier @default(STARTER)
+  billingEmail String?
+  
+  // Configuration
+  settings     Json? // Organization-specific settings
+  integrations Json? // External integrations config
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  users              User[]
+  businessMetrics    BusinessMetric[]
+  aiInteractions     AIInteraction[]
+  dashboards         Dashboard[]
+  reports            Report[]
+  integrations       Integration[]
+  auditLogs          AuditLog[]
+
+  @@map("organizations")
+}
+
+enum SubscriptionTier {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+// ============================================================================
+// TRINITY AI AGENTS & INTERACTIONS
+// ============================================================================
+
+model AIAgent {
+  id          String     @id @default(cuid())
+  name        String     // Oracle, Sentinel, Sage
+  slug        String     @unique // oracle, sentinel, sage
+  description String?
+  model       String     // AI model identifier
+  version     String     @default("1.0.0")
+  
+  // Configuration
+  config      Json?      // Agent-specific configuration
+  prompts     Json?      // System prompts and templates
+  
+  // Capabilities
+  capabilities String[]  // List of capabilities
+  tier        AgentTier @default(FREE)
+  
+  // Status
+  status      AgentStatus @default(ACTIVE)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  interactions AIInteraction[]
+
+  @@map("ai_agents")
+}
+
+model AIInteraction {
+  id             String   @id @default(cuid())
+  
+  // User & Organization
+  userId         String
+  organizationId String?
+  
+  // AI Agent
+  agentId        String
+  agentVersion   String?
+  
+  // Interaction Data
+  query          String   @db.Text
+  response       String   @db.Text
+  confidence     Float?
+  processingTime Int?     // milliseconds
+  
+  // Metadata
+  context        Json?    // Additional context data
+  metadata       Json?    // Technical metadata
+  
+  // Classification
+  category       String?  // business, technical, strategic, etc.
+  tags           String[]
+  
+  // Quality & Feedback
+  rating         Int?     // 1-5 star rating
+  feedback       String?  @db.Text
+  
+  // Status
+  status         InteractionStatus @default(COMPLETED)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  agent        AIAgent      @relation(fields: [agentId], references: [id])
+
+  @@map("ai_interactions")
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([agentId, createdAt])
+}
+
+enum AgentTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum AgentStatus {
+  ACTIVE
+  MAINTENANCE
+  DEPRECATED
+  DISABLED
+}
+
+enum InteractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================================================
+// BUSINESS METRICS & KPIs
+// ============================================================================
+
+model BusinessMetric {
+  id             String   @id @default(cuid())
+  
+  // Organization & User
+  organizationId String
+  createdBy      String
+  
+  // Metric Definition
+  name           String
+  description    String?
+  category       MetricCategory
+  type           MetricType
+  unit           String?        // dollars, percentage, count, etc.
+  
+  // Data Source
+  source         DataSource
+  sourceConfig   Json?          // Source-specific configuration
+  
+  // Value & Calculation
+  currentValue   Float?
+  previousValue  Float?
+  targetValue    Float?
+  calculation    String?        // Formula or calculation method
+  
+  // Time Series Data
+  frequency      UpdateFrequency @default(DAILY)
+  lastUpdated    DateTime?
+  
+  // Visualization
+  chartType      ChartType?     @default(LINE)
+  displayConfig  Json?          // Chart and display configuration
+  
+  // Status
+  status         MetricStatus   @default(ACTIVE)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  creator        User           @relation(fields: [createdBy], references: [id])
+  dataPoints     MetricDataPoint[]
+  dashboardItems DashboardItem[]
+  alerts         MetricAlert[]
+
+  @@map("business_metrics")
+  @@index([organizationId, category])
+  @@index([organizationId, status])
+}
+
+model MetricDataPoint {
+  id        String   @id @default(cuid())
+  metricId  String
+  
+  // Data
+  value     Float
+  timestamp DateTime
+  
+  // Metadata
+  metadata  Json?    // Additional data point metadata
+  source    String?  // Specific source of this data point
+  
+  // Relations
+  metric BusinessMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@map("metric_data_points")
+  @@index([metricId, timestamp])
+  @@unique([metricId, timestamp])
+}
+
+model MetricAlert {
+  id        String   @id @default(cuid())
+  metricId  String
+  
+  // Alert Configuration
+  name      String
+  condition Json     // Alert condition logic
+  threshold Float?
+  
+  // Notification
+  enabled   Boolean  @default(true)
+  channels  String[] // email, slack, webhook, etc.
+  
+  // Status
+  triggered Boolean  @default(false)
+  lastTriggered DateTime?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  metric BusinessMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@map("metric_alerts")
+}
+
+enum MetricCategory {
+  REVENUE
+  SALES
+  MARKETING
+  OPERATIONS
+  CUSTOMER
+  PRODUCT
+  FINANCIAL
+  HR
+  CUSTOM
+}
+
+enum MetricType {
+  GAUGE        // Single current value
+  COUNTER      // Incrementing count
+  RATE         // Rate of change
+  PERCENTAGE   // Percentage value
+  CURRENCY     // Monetary value
+  DURATION     // Time-based value
+}
+
+enum DataSource {
+  MANUAL
+  API
+  DATABASE
+  FILE_UPLOAD
+  HUBSPOT
+  SALESFORCE
+  GOOGLE_ANALYTICS
+  WEBHOOK
+  AI_GENERATED
+}
+
+enum UpdateFrequency {
+  REAL_TIME
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ChartType {
+  LINE
+  BAR
+  PIE
+  DONUT
+  AREA
+  SCATTER
+  GAUGE
+  TABLE
+}
+
+enum MetricStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  ERROR
+}
+
+// ============================================================================
+// DASHBOARDS & VISUALIZATION
+// ============================================================================
+
+model Dashboard {
+  id             String   @id @default(cuid())
+  
+  // Organization & User
+  organizationId String
+  createdBy      String
+  
+  // Dashboard Definition
+  name           String
+  description    String?
+  category       String?
+  
+  // Configuration
+  layout         Json?    // Dashboard layout configuration
+  theme          String?  // Theme/styling
+  isPublic       Boolean  @default(false)
+  
+  // Access Control
+  permissions    Json?    // Who can view/edit
+  
+  // Status
+  status         DashboardStatus @default(ACTIVE)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastViewedAt DateTime?
+  
+  // Relations
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  creator      User           @relation(fields: [createdBy], references: [id])
+  items        DashboardItem[]
+
+  @@map("dashboards")
+  @@index([organizationId, status])
+}
+
+model DashboardItem {
+  id          String   @id @default(cuid())
+  dashboardId String
+  metricId    String?
+  
+  // Position & Size
+  x           Int
+  y           Int
+  width       Int
+  height      Int
+  
+  // Configuration
+  title       String?
+  type        DashboardItemType
+  config      Json?    // Item-specific configuration
+  
+  // Relations
+  dashboard Dashboard       @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  metric    BusinessMetric? @relation(fields: [metricId], references: [id])
+
+  @@map("dashboard_items")
+  @@index([dashboardId])
+}
+
+enum DashboardStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum DashboardItemType {
+  METRIC_CARD
+  CHART
+  TABLE
+  TEXT
+  IMAGE
+  AI_INSIGHT
+  CUSTOM
+}
+
+// ============================================================================
+// REPORTS & ANALYTICS
+// ============================================================================
+
+model Report {
+  id             String   @id @default(cuid())
+  
+  // Organization & User
+  organizationId String
+  createdBy      String
+  
+  // Report Definition
+  name           String
+  description    String?
+  type           ReportType
+  
+  // Configuration
+  config         Json?    // Report configuration
+  schedule       Json?    // Automated scheduling
+  
+  // Template & Format
+  template       String?  // Report template
+  format         ReportFormat[] @default([PDF])
+  
+  // Status
+  status         ReportStatus @default(DRAFT)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastGenerated DateTime?
+  
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  creator        User        @relation(fields: [createdBy], references: [id])
+  executions     ReportExecution[]
+
+  @@map("reports")
+  @@index([organizationId, status])
+}
+
+model ReportExecution {
+  id           String   @id @default(cuid())
+  reportId     String
+  
+  // Execution Details
+  status       ExecutionStatus @default(PENDING)
+  startedAt    DateTime        @default(now())
+  completedAt  DateTime?
+  
+  // Output
+  outputPath   String?         // Path to generated report file
+  outputSize   Int?            // File size in bytes
+  
+  // Error Handling
+  error        String?         @db.Text
+  
+  // Relations
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_executions")
+  @@index([reportId, startedAt])
+}
+
+enum ReportType {
+  EXECUTIVE_SUMMARY
+  PERFORMANCE_REPORT
+  AI_INSIGHTS
+  CUSTOM
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+  HTML
+}
+
+enum ReportStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================================================
+// EXTERNAL INTEGRATIONS
+// ============================================================================
+
+model Integration {
+  id             String   @id @default(cuid())
+  organizationId String
+  
+  // Integration Details
+  name           String
+  type           IntegrationType
+  provider       String          // hubspot, salesforce, etc.
+  
+  // Configuration
+  config         Json            // Provider-specific config
+  credentials    Json            // Encrypted credentials
+  
+  // Status
+  status         IntegrationStatus @default(INACTIVE)
+  lastSync       DateTime?
+  lastError      String?
+  
+  // Settings
+  syncFrequency  UpdateFrequency @default(DAILY)
+  enabled        Boolean         @default(true)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+  syncLogs     IntegrationSyncLog[]
+
+  @@map("integrations")
+  @@index([organizationId, type])
+}
+
+model IntegrationSyncLog {
+  id            String   @id @default(cuid())
+  integrationId String
+  
+  // Sync Details
+  status        SyncStatus @default(STARTED)
+  startedAt     DateTime   @default(now())
+  completedAt   DateTime?
+  
+  // Statistics
+  recordsProcessed Int?
+  recordsCreated   Int?
+  recordsUpdated   Int?
+  recordsSkipped   Int?
+  recordsErrors    Int?
+  
+  // Error Handling
+  error         String?  @db.Text
+  
+  // Relations
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@map("integration_sync_logs")
+  @@index([integrationId, startedAt])
+}
+
+enum IntegrationType {
+  CRM
+  MARKETING
+  ANALYTICS
+  FINANCIAL
+  COMMUNICATION
+  STORAGE
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  CONFIGURING
+  TESTING
+}
+
+enum SyncStatus {
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+// ============================================================================
+// AUDIT LOGS & COMPLIANCE
+// ============================================================================
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  
+  // User & Organization
+  userId         String?
+  organizationId String?
+  
+  // Action Details
+  action         String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  resource       String   // users, metrics, dashboards, etc.
+  resourceId     String?  // ID of the affected resource
+  
+  // Event Data
+  oldValues      Json?    // Previous values (for updates)
+  newValues      Json?    // New values
+  metadata       Json?    // Additional context
+  
+  // Network & Security
+  ipAddress      String?
+  userAgent      String?  @db.Text
+  
+  // Timestamp
+  timestamp      DateTime @default(now())
+  
+  // Relations
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("audit_logs")
+  @@index([userId, timestamp])
+  @@index([organizationId, timestamp])
+  @@index([action, timestamp])
+  @@index([resource, timestamp])
+}
+
+// ============================================================================
+// SYSTEM CONFIGURATION
+// ============================================================================
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// ============================================================================
+// WEBHOOKS & NOTIFICATIONS
+// ============================================================================
+
+model Webhook {
+  id             String   @id @default(cuid())
+  organizationId String
+  
+  // Webhook Configuration
+  name           String
+  url            String
+  secret         String?
+  events         String[] // List of events to subscribe to
+  
+  // Status
+  enabled        Boolean  @default(true)
+  status         WebhookStatus @default(ACTIVE)
+  
+  // Statistics
+  lastTriggered  DateTime?
+  successCount   Int      @default(0)
+  failureCount   Int      @default(0)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  deliveries   WebhookDelivery[]
+
+  @@map("webhooks")
+  @@index([organizationId])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  
+  // Delivery Details
+  event      String
+  payload    Json
+  status     DeliveryStatus @default(PENDING)
+  
+  // Response
+  httpStatus Int?
+  response   String?  @db.Text
+  error      String?  @db.Text
+  
+  // Timing
+  attempts   Int      @default(0)
+  deliveredAt DateTime @default(now())
+  
+  // Relations
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+  @@index([webhookId, deliveredAt])
+}
+
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  FAILED
+  DISABLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRY
+}

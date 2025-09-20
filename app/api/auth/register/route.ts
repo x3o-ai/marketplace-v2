@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 // User registration schema for Trinity Agent trial signup
 const registerSchema = z.object({
@@ -20,26 +22,73 @@ export async function POST(request: NextRequest) {
     // Validate input data
     const validatedData = registerSchema.parse(body)
     
-    // TODO: Connect to actual user database (Prisma)
-    // For now, we'll create a trial user record
-    const user = {
-      id: `user_${Date.now()}`,
-      email: validatedData.email,
-      name: validatedData.name,
-      company: validatedData.company,
-      role: validatedData.role,
-      industry: validatedData.industry,
-      trinityAgentInterest: validatedData.trinityAgentInterest || ['Oracle'],
-      useCase: validatedData.useCase,
-      teamSize: validatedData.teamSize,
-      trialStatus: 'ACTIVE',
-      trialStartDate: new Date().toISOString(),
-      trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days
-      createdAt: new Date().toISOString(),
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: validatedData.email }
+    })
+
+    if (existingUser) {
+      return NextResponse.json({
+        success: false,
+        message: 'User already exists with this email address',
+      }, { status: 409 })
     }
+
+    // Create organization if provided
+    let organizationId = null
+    if (validatedData.company) {
+      const organization = await prisma.organization.create({
+        data: {
+          name: validatedData.company,
+          industry: validatedData.industry || null,
+          size: validatedData.teamSize || null,
+          subscription: 'STARTER', // Start with trial subscription
+        }
+      })
+      organizationId = organization.id
+    }
+
+    // Create user with real database
+    const user = await prisma.user.create({
+      data: {
+        email: validatedData.email,
+        name: validatedData.name,
+        role: 'USER',
+        status: 'ACTIVE',
+        organizationId,
+        department: validatedData.role || null,
+        jobTitle: validatedData.role || null,
+        permissions: ['trinity_agent_trial'],
+      },
+      include: {
+        organization: true
+      }
+    })
+
+    // Create trial access record
+    const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     
-    // TODO: Save to database
-    // await prisma.user.create({ data: user })
+    // Log initial AI interaction for trial setup
+    const initialInteraction = await prisma.aIInteraction.create({
+      data: {
+        userId: user.id,
+        organizationId: organizationId,
+        agentId: 'oracle', // Default to Oracle for new trials
+        query: `Trial signup: ${validatedData.useCase || 'Enterprise automation trial'}`,
+        response: `Welcome to Trinity Agents! Your 14-day trial includes Oracle Analytics, Sentinel Monitoring, and Sage Optimization.`,
+        confidence: 1.0,
+        processingTime: 0,
+        context: {
+          trinityAgentInterest: validatedData.trinityAgentInterest,
+          useCase: validatedData.useCase,
+          industry: validatedData.industry,
+          teamSize: validatedData.teamSize
+        },
+        category: 'trial_onboarding',
+        tags: ['trial', 'onboarding', 'signup'],
+        status: 'COMPLETED'
+      }
+    })
     
     // TODO: Send welcome email with Trinity Agent trial access
     // await sendTrialWelcomeEmail(user)
