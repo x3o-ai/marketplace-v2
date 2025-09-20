@@ -8,10 +8,10 @@ if (process.env.SENDGRID_API_KEY) {
 // Email configuration
 const EMAIL_CONFIG = {
   from: {
-    email: process.env.EMAIL_FROM || 'noreply@x3o.ai',
+    email: process.env.EMAIL_FROM || 'founder@x3o.ai',
     name: process.env.EMAIL_FROM_NAME || 'x3o.ai Trinity Agents'
   },
-  replyTo: process.env.EMAIL_REPLY_TO || 'support@x3o.ai'
+  replyTo: process.env.EMAIL_REPLY_TO || 'founder@x3o.ai'
 }
 
 // Email service functions
