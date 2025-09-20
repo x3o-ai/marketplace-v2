@@ -3,9 +3,16 @@ import { z } from 'zod'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-})
+// Initialize Stripe only when needed to avoid build-time errors
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is required')
+  }
+  
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-06-20',
+  })
+}
 
 // Subscription creation schema
 const subscriptionSchema = z.object({
@@ -66,6 +73,9 @@ export async function POST(request: NextRequest) {
     
     const selectedPlan = pricingTiers[validatedData.plan]
     const priceAmount = selectedPlan[validatedData.billingPeriod] * validatedData.seats
+    
+    // Initialize Stripe for this request
+    const stripe = getStripe()
     
     // Find user in database
     const user = await prisma.user.findUnique({
