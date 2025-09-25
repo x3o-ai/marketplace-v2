@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
+import { EmailService } from '@/lib/email'
 
 // Initialize Stripe only when needed to avoid build-time errors
 function getStripe() {
@@ -246,4 +247,83 @@ export async function GET(request: NextRequest) {
     success: true,
     subscription
   })
+}
+
+// Provision Trinity Agent access for paid users
+async function provisionPaidAccess(userId: string, plan: string, seats: number): Promise<void> {
+  try {
+    // Update user permissions based on plan
+    let permissions: string[] = []
+    
+    switch (plan) {
+      case 'creative':
+        permissions = [
+          'sage_agent_full',
+          'content_generation_unlimited',
+          'brand_management',
+          'campaign_optimization',
+          'creative_workflows'
+        ]
+        break
+      case 'oracle':
+        permissions = [
+          'oracle_agent_full',
+          'advanced_analytics',
+          'predictive_modeling',
+          'business_intelligence',
+          'custom_dashboards',
+          'enterprise_reporting'
+        ]
+        break
+      case 'enterprise':
+        permissions = [
+          'trinity_agent_full',
+          'oracle_agent_full',
+          'sentinel_agent_full',
+          'sage_agent_full',
+          'enterprise_admin',
+          'unlimited_queries',
+          'priority_support',
+          'custom_integrations',
+          'dedicated_success_manager'
+        ]
+        break
+    }
+
+    // Update user with paid permissions
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        permissions: {
+          set: permissions
+        },
+        // Remove trial permission and add paid permissions
+        status: 'ACTIVE'
+      }
+    })
+
+    // Create audit log for permission change
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'SUBSCRIPTION_ACTIVATED',
+        resource: 'subscription',
+        newValues: {
+          plan,
+          seats,
+          permissions,
+          activatedAt: new Date().toISOString()
+        },
+        metadata: {
+          source: 'billing_system',
+          subscriptionUpgrade: true
+        }
+      }
+    })
+
+    console.log(`Provisioned ${plan} access for user ${userId} with ${seats} seats`)
+  } catch (error) {
+    console.error('Failed to provision paid access:', error)
+    throw error
+  }
 }

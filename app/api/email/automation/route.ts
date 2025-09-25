@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { EmailService, logEmail } from '@/lib/email'
 
 // Email automation schema
 const emailAutomationSchema = z.object({
@@ -268,23 +269,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // TODO: Send email using your preferred service (SendGrid, Mailgun, etc.)
-    // await sendEmail(emailContent)
-    
-    // TODO: Log email sent to database
-    // await prisma.emailLog.create({
-    //   data: {
-    //     userId: validatedData.userId,
-    //     type: validatedData.triggerEvent,
-    //     recipient: validatedData.email,
-    //     subject: emailContent.subject,
-    //     status: 'sent',
-    //     sentAt: new Date()
-    //   }
-    // })
+    // Send email using SendGrid
+    const emailResult = await EmailService.sendEmail({
+      to: emailContent.to,
+      subject: emailContent.subject,
+      html: emailContent.html
+    })
 
-    // Simulate email sending success
-    console.log(`Email sent: ${validatedData.triggerEvent} to ${validatedData.email}`)
+    // Log email to database
+    await logEmail({
+      userId: validatedData.userId,
+      organizationId: user.organizationId,
+      type: validatedData.triggerEvent.toUpperCase() as any,
+      recipient: emailContent.to,
+      subject: emailContent.subject,
+      content: emailContent.html,
+      provider: 'sendgrid',
+      providerMessageId: emailResult.messageId,
+      status: emailResult.success ? 'SENT' : 'FAILED',
+      error: emailResult.error
+    })
+
+    if (!emailResult.success) {
+      console.error(`Email sending failed: ${emailResult.error}`)
+      return NextResponse.json({
+        success: false,
+        message: 'Failed to send email',
+        error: emailResult.error
+      }, { status: 500 })
+    }
+
+    console.log(`Email sent successfully: ${validatedData.triggerEvent} to ${validatedData.email}`)
 
     return NextResponse.json({
       success: true,
@@ -318,46 +333,92 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get('action')
   
   if (action === 'schedule-automation') {
-    // TODO: This would typically be called by a cron job or background worker
-    
-    // Simulate finding users who need emails
-    const emailsToSend = [
-      {
-        userId: 'user_123',
-        email: 'john@company.com',
-        name: 'John Smith',
-        triggerEvent: 'trial_day_3',
-        userData: {
-          costSavings: '52,140',
-          timeReduced: '89',
-          accuracy: '96',
-          agentInteractions: '47'
+    // Find users who need automated emails based on trial status
+    const now = new Date()
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000)
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+    // Find users for different email triggers
+    const usersForEmails = await prisma.user.findMany({
+      where: {
+        permissions: { has: 'trinity_agent_trial' },
+        createdAt: {
+          gte: fourteenDaysAgo,
+          lte: now
         }
       },
-      {
-        userId: 'user_456', 
-        email: 'sarah@techcorp.com',
-        name: 'Sarah Johnson',
-        triggerEvent: 'trial_expiring',
-        userData: {
-          daysLeft: '1',
-          totalSavings: '73,920',
-          efficiencyGain: '340',
-          automationHours: '156'
-        }
+      include: {
+        emailLogs: {
+          where: {
+            createdAt: { gte: threeDaysAgo }
+          }
+        },
+        aiInteractions: true
       }
-    ]
+    })
 
-    // Process email queue
+    const emailsToSend = []
+
+    for (const user of usersForEmails) {
+      const daysSinceSignup = Math.floor((now.getTime() - user.createdAt.getTime()) / (24 * 60 * 60 * 1000))
+      const hasRecentEmail = user.emailLogs.some(log =>
+        log.type === 'TRIAL_DAY_3' || log.type === 'TRIAL_DAY_7' || log.type === 'TRIAL_DAY_10'
+      )
+
+      // Determine which email to send
+      let triggerEvent = null
+      if (daysSinceSignup === 3 && !hasRecentEmail) {
+        triggerEvent = 'trial_day_3'
+      } else if (daysSinceSignup === 7 && !hasRecentEmail) {
+        triggerEvent = 'trial_day_7'
+      } else if (daysSinceSignup === 10 && !hasRecentEmail) {
+        triggerEvent = 'trial_day_10'
+      } else if (daysSinceSignup >= 13 && !hasRecentEmail) {
+        triggerEvent = 'trial_expiring'
+      }
+
+      if (triggerEvent) {
+        emailsToSend.push({
+          userId: user.id,
+          email: user.email,
+          name: user.name || 'Valued Customer',
+          triggerEvent,
+          userData: {
+            totalInteractions: user.aiInteractions.length.toString(),
+            daysSinceSignup: daysSinceSignup.toString()
+          }
+        })
+      }
+    }
+
+    // Process email queue with real SendGrid integration
     const results = []
     for (const emailData of emailsToSend) {
       try {
-        // This would trigger the email automation
+        // Trigger actual email automation
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email/automation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: emailData.userId,
+            email: emailData.email,
+            name: emailData.name,
+            triggerEvent: emailData.triggerEvent,
+            userData: emailData.userData
+          })
+        })
+
+        const emailResult = await emailResponse.json()
+        
         results.push({
           userId: emailData.userId,
           email: emailData.email,
           trigger: emailData.triggerEvent,
-          status: 'scheduled'
+          status: emailResult.success ? 'sent' : 'failed',
+          messageId: emailResult.messageId,
+          error: emailResult.error
         })
       } catch (error) {
         results.push({
@@ -365,7 +426,7 @@ export async function GET(request: NextRequest) {
           email: emailData.email,
           trigger: emailData.triggerEvent,
           status: 'failed',
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }

@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
+import AIServiceManager, { TRINITY_AGENT_CONFIGS } from './ai-services'
+import { PromptBuilder, ResponseValidator, ORACLE_PROMPTS, SENTINEL_PROMPTS, SAGE_PROMPTS } from './trinity-prompts'
+import type { AgentContext } from './trinity-prompts'
 
 export interface TrinityAgentResponse {
   agent: string
@@ -116,102 +119,152 @@ export async function getTrialStatus(userId: string): Promise<TrialAccess | null
   }
 }
 
-// Trinity Agent response generators with realistic AI-like responses
-const trinityAgentResponses = {
-  oracle: {
-    generatePrediction: (context: any) => ({
-      prediction: `Based on current data trends, revenue is projected to ${Math.random() > 0.5 ? 'increase' : 'stabilize'} by ${Math.floor(Math.random() * 25 + 10)}% next quarter`,
-      confidence: Math.floor(Math.random() * 10 + 90),
-      factors: [
-        'Customer retention metrics show positive trend',
-        'Market conditions favorable for growth',
-        'Seasonal patterns indicate increased demand',
-        'Competitive analysis suggests market opportunity'
-      ].slice(0, Math.floor(Math.random() * 3 + 2)),
-      recommendation: `Consider increasing ${Math.random() > 0.5 ? 'marketing' : 'operational'} investment by ${Math.floor(Math.random() * 20 + 10)}%`,
-      timeframe: 'Next 90 days',
-      riskFactors: ['Market volatility', 'Supply chain constraints'].slice(0, Math.floor(Math.random() * 2 + 1))
-    }),
-    
-    generateInsights: (context: any) => ({
-      keyInsights: [
-        'Customer acquisition cost decreased 12% month-over-month',
-        'High-value customer segment showing 23% growth',
-        'Product adoption rate exceeds industry benchmark by 34%',
-        'Customer satisfaction scores trending upward (4.7/5)',
-        'Cross-selling opportunities identified in enterprise segment'
-      ].slice(0, Math.floor(Math.random() * 3 + 2)),
-      businessImpact: `Projected monthly impact: $${Math.floor(Math.random() * 50000 + 25000).toLocaleString()}`,
-      actionItems: [
-        'Optimize high-performing customer segments',
-        'Expand successful product features',
-        'Implement predictive customer success strategies'
-      ]
-    })
-  },
+// Enhanced Trinity Agent with Real AI Integration
+class TrinityAgentEngine {
+  private aiService: AIServiceManager
   
-  sentinel: {
-    generateMonitoring: (context: any) => ({
-      systemHealth: parseFloat((Math.random() * 2 + 98).toFixed(1)), // 98-100%
-      alertsPrevented: Math.floor(Math.random() * 20 + 10),
-      optimizationsApplied: [
-        'Database query performance improved 34%',
-        'API response time reduced by 45ms',
-        'Memory usage optimized (-18%)',
-        'Cache hit ratio increased to 94%',
-        'Background job processing enhanced (+22%)'
-      ].slice(0, Math.floor(Math.random() * 3 + 2)),
-      uptime: '99.97%',
-      recommendations: [
-        'Scale API servers during peak hours (3-5 PM)',
-        'Implement Redis caching for frequently accessed data',
-        'Optimize database indexes for faster queries'
-      ].slice(0, Math.floor(Math.random() * 2 + 1))
-    }),
-    
-    generateSecurityAnalysis: (context: any) => ({
-      threatLevel: 'Low',
-      securityScore: Math.floor(Math.random() * 5 + 95), // 95-100
-      vulnerabilitiesPatched: Math.floor(Math.random() * 8 + 3),
-      anomaliesDetected: Math.floor(Math.random() * 5),
-      protectionStatus: 'Active monitoring enabled',
-      recommendations: ['Update security certificates', 'Review access logs'].slice(0, Math.floor(Math.random() * 2 + 1))
-    })
-  },
-  
-  sage: {
-    generateContent: (context: any) => ({
-      contentCreated: Math.floor(Math.random() * 20 + 10),
-      contentTypes: ['Email campaigns', 'Social media posts', 'Blog articles', 'Product descriptions'],
-      engagementPrediction: Math.floor(Math.random() * 15 + 80), // 80-95%
-      brandConsistency: Math.floor(Math.random() * 8 + 92), // 92-100%
-      optimizations: [
-        'A/B test subject lines for 23% better open rates',
-        'Optimize posting schedule for maximum engagement',
-        'Personalize content based on customer segments',
-        'Implement dynamic content adaptation'
-      ].slice(0, Math.floor(Math.random() * 3 + 2)),
-      performanceMetrics: {
-        clickThroughRate: `${(Math.random() * 3 + 4).toFixed(1)}%`,
-        conversionRate: `${(Math.random() * 2 + 2.5).toFixed(1)}%`,
-        engagementScore: Math.floor(Math.random() * 10 + 85)
+  constructor() {
+    this.aiService = AIServiceManager.getInstance()
+  }
+
+  // Oracle Analytics - Real AI-powered business intelligence
+  async generateOracleResponse(query: string, context: AgentContext): Promise<any> {
+    try {
+      const promptType = PromptBuilder.detectPromptType('oracle', query)
+      const messages = PromptBuilder.buildPrompt('oracle', promptType, query, context)
+      const config = TRINITY_AGENT_CONFIGS.oracle
+
+      const aiResponse = await this.aiService.generateResponse(messages, config, context)
+      
+      // Validate and parse response
+      const expectedFormat = ORACLE_PROMPTS[promptType].responseFormat
+      const validation = ResponseValidator.validateResponse(aiResponse.content, expectedFormat, 'oracle')
+      
+      if (!validation.isValid) {
+        console.warn('Oracle response validation failed:', validation.errors)
+        // Fallback to parsed response or create structured response
+        return this.createFallbackOracleResponse(query, aiResponse.content)
       }
-    }),
-    
-    generateCampaign: (context: any) => ({
-      campaignStrategy: 'Multi-channel engagement approach',
-      channels: ['Email', 'Social Media', 'Content Marketing', 'Paid Advertising'].slice(0, Math.floor(Math.random() * 3 + 2)),
-      expectedROI: `${Math.floor(Math.random() * 200 + 150)}%`,
-      timeline: `${Math.floor(Math.random() * 8 + 4)} weeks`,
-      budgetOptimization: `Reduce spend by ${Math.floor(Math.random() * 15 + 10)}% while maintaining performance`,
-      keyMessages: [
-        'Innovation-focused value proposition',
-        'Customer success stories and testimonials',
-        'Competitive advantage highlighting'
-      ]
-    })
+
+      return {
+        ...validation.parsedResponse,
+        aiMetadata: {
+          model: aiResponse.model,
+          provider: aiResponse.provider,
+          confidence: aiResponse.confidence,
+          processingTime: aiResponse.processingTime,
+          usage: aiResponse.usage
+        }
+      }
+    } catch (error) {
+      console.error('Oracle AI generation failed:', error)
+      return this.createFallbackOracleResponse(query, error.message)
+    }
+  }
+
+  // Sentinel Monitoring - Real AI-powered system analysis
+  async generateSentinelResponse(query: string, context: AgentContext): Promise<any> {
+    try {
+      const promptType = PromptBuilder.detectPromptType('sentinel', query)
+      const messages = PromptBuilder.buildPrompt('sentinel', promptType, query, context)
+      const config = TRINITY_AGENT_CONFIGS.sentinel
+
+      const aiResponse = await this.aiService.generateResponse(messages, config, context)
+      
+      const expectedFormat = SENTINEL_PROMPTS[promptType].responseFormat
+      const validation = ResponseValidator.validateResponse(aiResponse.content, expectedFormat, 'sentinel')
+      
+      if (!validation.isValid) {
+        console.warn('Sentinel response validation failed:', validation.errors)
+        return this.createFallbackSentinelResponse(query, aiResponse.content)
+      }
+
+      return {
+        ...validation.parsedResponse,
+        aiMetadata: {
+          model: aiResponse.model,
+          provider: aiResponse.provider,
+          confidence: aiResponse.confidence,
+          processingTime: aiResponse.processingTime,
+          usage: aiResponse.usage
+        }
+      }
+    } catch (error) {
+      console.error('Sentinel AI generation failed:', error)
+      return this.createFallbackSentinelResponse(query, error.message)
+    }
+  }
+
+  // Sage Optimization - Real AI-powered content generation
+  async generateSageResponse(query: string, context: AgentContext): Promise<any> {
+    try {
+      const promptType = PromptBuilder.detectPromptType('sage', query)
+      const messages = PromptBuilder.buildPrompt('sage', promptType, query, context)
+      const config = TRINITY_AGENT_CONFIGS.sage
+
+      const aiResponse = await this.aiService.generateResponse(messages, config, context)
+      
+      const expectedFormat = SAGE_PROMPTS[promptType].responseFormat
+      const validation = ResponseValidator.validateResponse(aiResponse.content, expectedFormat, 'sage')
+      
+      if (!validation.isValid) {
+        console.warn('Sage response validation failed:', validation.errors)
+        return this.createFallbackSageResponse(query, aiResponse.content)
+      }
+
+      return {
+        ...validation.parsedResponse,
+        aiMetadata: {
+          model: aiResponse.model,
+          provider: aiResponse.provider,
+          confidence: aiResponse.confidence,
+          processingTime: aiResponse.processingTime,
+          usage: aiResponse.usage
+        }
+      }
+    } catch (error) {
+      console.error('Sage AI generation failed:', error)
+      return this.createFallbackSageResponse(query, error.message)
+    }
+  }
+
+  // Fallback responses for error cases
+  private createFallbackOracleResponse(query: string, content: string): any {
+    return {
+      analysis: content.substring(0, 200) + '...',
+      confidence: 75,
+      insights: ['Analysis completed with limited data', 'Recommend connecting more data sources'],
+      recommendations: ['Review data inputs for better accuracy'],
+      businessImpact: 'Impact assessment requires additional data',
+      riskFactors: ['Limited data availability'],
+      fallback: true
+    }
+  }
+
+  private createFallbackSentinelResponse(query: string, content: string): any {
+    return {
+      systemHealth: 'Monitoring Active',
+      healthScore: 85,
+      issues: [{ severity: 'INFO', description: 'AI analysis in progress', recommendation: 'Continue monitoring' }],
+      optimizations: ['System monitoring is active'],
+      recommendations: ['Check back for detailed analysis'],
+      fallback: true
+    }
+  }
+
+  private createFallbackSageResponse(query: string, content: string): any {
+    return {
+      content: { body: content.substring(0, 300) + '...' },
+      brandAlignment: 80,
+      recommendations: ['Content generated successfully'],
+      performancePrediction: { engagementRate: 'Analysis pending' },
+      fallback: true
+    }
   }
 }
+
+// Global Trinity Agent engine instance
+const trinityEngine = new TrinityAgentEngine()
 
 // Execute Trinity Agent interaction with comprehensive logging
 export async function executeTrialInteraction(
@@ -241,44 +294,82 @@ export async function executeTrialInteraction(
       throw new Error(`${agentType} agent not found`)
     }
 
-    // Generate AI response based on agent type and query
+    // Get user and organization context for AI
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { organization: true }
+    })
+
+    // Build enhanced context for AI
+    const agentContext: AgentContext = {
+      userProfile: {
+        name: user?.name,
+        role: user?.jobTitle,
+        department: user?.department
+      },
+      organizationData: {
+        name: user?.organization?.name,
+        industry: user?.organization?.industry,
+        size: user?.organization?.size,
+        settings: user?.organization?.settings
+      },
+      previousInteractions: context.previousInteractions || [],
+      timeContext: {
+        currentDate: new Date().toISOString(),
+        timeOfDay: new Date().getHours() > 12 ? 'afternoon' : 'morning',
+        quarter: `Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
+        fiscalYear: new Date().getFullYear().toString()
+      },
+      ...context
+    }
+
+    // Generate real AI response using Trinity Engine
     let responseData
-    const processingTime = Math.floor(Math.random() * 800 + 200) // 200-1000ms
+    const startTime = Date.now()
 
     switch (agentType) {
       case 'oracle':
-        responseData = query.toLowerCase().includes('predict') || query.toLowerCase().includes('forecast')
-          ? trinityAgentResponses.oracle.generatePrediction(context)
-          : trinityAgentResponses.oracle.generateInsights(context)
+        responseData = await trinityEngine.generateOracleResponse(query, agentContext)
         break
       case 'sentinel':
-        responseData = query.toLowerCase().includes('security') || query.toLowerCase().includes('threat')
-          ? trinityAgentResponses.sentinel.generateSecurityAnalysis(context)
-          : trinityAgentResponses.sentinel.generateMonitoring(context)
+        responseData = await trinityEngine.generateSentinelResponse(query, agentContext)
         break
       case 'sage':
-        responseData = query.toLowerCase().includes('campaign') || query.toLowerCase().includes('strategy')
-          ? trinityAgentResponses.sage.generateCampaign(context)
-          : trinityAgentResponses.sage.generateContent(context)
+        responseData = await trinityEngine.generateSageResponse(query, agentContext)
         break
       default:
         throw new Error('Invalid agent type')
     }
 
-    // Save interaction to database
+    const processingTime = Date.now() - startTime
+
+    // Save interaction to database with AI metadata
     const interaction = await prisma.aIInteraction.create({
       data: {
         userId,
-        organizationId: context.organizationId,
+        organizationId: context.organizationId || user?.organizationId,
         agentId: agent.id,
         agentVersion: agent.version,
         query,
         response: JSON.stringify(responseData),
-        confidence: Math.random() * 0.1 + 0.9, // 90-100%
+        confidence: responseData.aiMetadata?.confidence || 0.9,
         processingTime,
-        context: { ...context, trialInteraction: true },
-        category: `${agentType}_trial`,
-        tags: ['trial', agentType, 'interactive'],
+        context: {
+          ...agentContext,
+          trialInteraction: true,
+          aiProvider: responseData.aiMetadata?.provider,
+          aiModel: responseData.aiMetadata?.model
+        },
+        metadata: {
+          aiUsage: responseData.aiMetadata?.usage,
+          responseValidation: responseData.fallback ? 'fallback_used' : 'validated',
+          processingDetails: {
+            promptType: PromptBuilder.detectPromptType(agentType, query),
+            responseSize: JSON.stringify(responseData).length
+          }
+        },
+        category: `${agentType}_ai_powered`,
+        tags: ['trial', agentType, 'ai_powered', responseData.aiMetadata?.provider || 'unknown'],
         status: 'COMPLETED'
       }
     })
@@ -296,8 +387,8 @@ export async function executeTrialInteraction(
 
     return {
       agent: agent.name,
-      type: agentType === 'oracle' ? 'predictive_analysis' : 
-            agentType === 'sentinel' ? 'system_monitoring' : 'content_optimization',
+      type: agentType === 'oracle' ? 'ai_business_intelligence' :
+            agentType === 'sentinel' ? 'ai_system_monitoring' : 'ai_content_optimization',
       data: responseData,
       timestamp: interaction.createdAt.toISOString(),
       interactionId: interaction.id,
@@ -306,7 +397,8 @@ export async function executeTrialInteraction(
         limit: trialStatus.limits[agentType],
         remainingInteractions: trialStatus.limits[agentType] - updatedUsage,
         daysRemaining: trialStatus.daysRemaining
-      }
+      },
+      aiMetadata: responseData.aiMetadata
     }
   } catch (error) {
     console.error('Trinity Agent interaction error:', error)

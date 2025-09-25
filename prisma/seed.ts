@@ -3,7 +3,24 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Seeding Trinity Agents and sample data...')
+  console.log('🌱 Starting Trinity Agent production database seeding...')
+
+  // Validate production environment
+  const requiredEnvVars = [
+    'DATABASE_URL', 'NEXTAUTH_SECRET', 'SENDGRID_API_KEY',
+    'STRIPE_SECRET_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'
+  ]
+  
+  const missingVars = requiredEnvVars.filter(key => !process.env[key])
+  if (missingVars.length > 0) {
+    console.warn('⚠️  Missing environment variables:', missingVars.join(', '))
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Production deployment requires all environment variables: ${missingVars.join(', ')}`)
+    }
+  }
+
+  console.log('✅ Environment validation complete')
+  console.log('🌱 Seeding Trinity Agents and production data...')
 
   // Create Trinity AI Agents
   const oracleAgent = await prisma.aIAgent.upsert({
@@ -13,13 +30,23 @@ async function main() {
       name: 'Oracle Analytics',
       slug: 'oracle',
       description: 'Advanced business intelligence and predictive analytics engine with explainable AI decisions',
-      model: 'gpt-4-trinity-oracle',
-      version: '1.2.0',
+      model: 'gpt-4-turbo-preview',
+      version: '2.0.0',
       config: {
-        maxTokens: 8192,
+        provider: 'openai',
+        maxTokens: 1500,
         temperature: 0.3,
-        features: ['predictive_analytics', 'business_intelligence', 'roi_analysis', 'trend_forecasting'],
-        specializations: ['revenue_prediction', 'market_analysis', 'customer_insights', 'risk_assessment']
+        topP: 0.9,
+        frequencyPenalty: 0.1,
+        presencePenalty: 0.1,
+        features: ['predictive_analytics', 'business_intelligence', 'roi_analysis', 'trend_forecasting', 'real_time_streaming'],
+        specializations: ['revenue_prediction', 'market_analysis', 'customer_insights', 'risk_assessment'],
+        production: {
+          errorHandling: true,
+          fallbackProvider: 'claude',
+          cacheEnabled: true,
+          monitoringEnabled: true
+        }
       },
       prompts: {
         system: "You are Oracle, the Trinity Agent specialized in advanced business intelligence and predictive analytics. You provide data-driven insights with explainable AI decisions and measurable ROI projections.",
@@ -48,13 +75,21 @@ async function main() {
       name: 'Sentinel Monitoring',
       slug: 'sentinel',
       description: '24/7 autonomous system monitoring and optimization with intelligent threat detection',
-      model: 'gpt-4-trinity-sentinel',
-      version: '1.2.0',
+      model: 'claude-3-5-sonnet-20241022',
+      version: '2.0.0',
       config: {
-        maxTokens: 4096,
-        temperature: 0.1,
-        features: ['system_monitoring', 'anomaly_detection', 'auto_optimization', 'threat_analysis'],
-        specializations: ['performance_monitoring', 'security_analysis', 'resource_optimization', 'uptime_management']
+        provider: 'claude',
+        maxTokens: 1200,
+        temperature: 0.2,
+        topP: 0.8,
+        features: ['system_monitoring', 'anomaly_detection', 'auto_optimization', 'threat_analysis', 'real_time_streaming'],
+        specializations: ['performance_monitoring', 'security_analysis', 'resource_optimization', 'uptime_management'],
+        production: {
+          errorHandling: true,
+          fallbackProvider: 'openai',
+          cacheEnabled: true,
+          monitoringEnabled: true
+        }
       },
       prompts: {
         system: "You are Sentinel, the Trinity Agent specialized in autonomous system monitoring and optimization. You maintain system health, detect anomalies, and optimize performance 24/7.",
@@ -253,10 +288,35 @@ async function main() {
     metrics: 1
   })
 
-  // Create system configuration
+  // Create production system configuration
   await prisma.systemConfig.upsert({
     where: { key: 'trinity_agent_settings' },
-    update: {},
+    update: {
+      value: {
+        trial_duration_days: 14,
+        limits: {
+          oracle: { daily: 50, total: 700 },
+          sentinel: { daily: 25, total: 350 },
+          sage: { daily: 100, total: 1400 }
+        },
+        features: {
+          real_time_monitoring: true,
+          predictive_analytics: true,
+          content_generation: true,
+          automated_optimization: true,
+          ai_streaming: true,
+          cost_optimization: true
+        },
+        ai_providers: {
+          openai: { enabled: true, model: 'gpt-4-turbo-preview', fallback: 'claude' },
+          claude: { enabled: true, model: 'claude-3-5-sonnet-20241022', fallback: 'openai' }
+        },
+        production: {
+          environment: process.env.NODE_ENV || 'development',
+          lastUpdated: new Date().toISOString()
+        }
+      }
+    },
     create: {
       key: 'trinity_agent_settings',
       value: {
@@ -270,27 +330,99 @@ async function main() {
           real_time_monitoring: true,
           predictive_analytics: true,
           content_generation: true,
-          automated_optimization: true
+          automated_optimization: true,
+          ai_streaming: true,
+          cost_optimization: true
+        },
+        ai_providers: {
+          openai: { enabled: true, model: 'gpt-4-turbo-preview', fallback: 'claude' },
+          claude: { enabled: true, model: 'claude-3-5-sonnet-20241022', fallback: 'openai' }
+        },
+        production: {
+          environment: process.env.NODE_ENV || 'development',
+          lastUpdated: new Date().toISOString()
         }
       },
-      description: 'Trinity Agent configuration and limits',
+      description: 'Trinity Agent production configuration and limits',
       category: 'trinity_agents'
     }
   })
 
   await prisma.systemConfig.upsert({
     where: { key: 'platform_settings' },
-    update: {},
+    update: {
+      value: {
+        maintenance_mode: false,
+        trial_signups_enabled: true,
+        enterprise_features_enabled: true,
+        conversion_tracking_enabled: true,
+        production_ready: true,
+        integrations: {
+          sendgrid: { enabled: !!process.env.SENDGRID_API_KEY },
+          stripe: { enabled: !!process.env.STRIPE_SECRET_KEY },
+          openai: { enabled: !!process.env.OPENAI_API_KEY },
+          claude: { enabled: !!process.env.ANTHROPIC_API_KEY }
+        },
+        security: {
+          rate_limiting: true,
+          audit_logging: true,
+          error_tracking: true,
+          session_security: true
+        },
+        performance: {
+          caching_enabled: true,
+          response_compression: true,
+          cdn_enabled: process.env.NODE_ENV === 'production'
+        }
+      }
+    },
     create: {
       key: 'platform_settings',
       value: {
         maintenance_mode: false,
         trial_signups_enabled: true,
         enterprise_features_enabled: true,
-        conversion_tracking_enabled: true
+        conversion_tracking_enabled: true,
+        production_ready: true,
+        integrations: {
+          sendgrid: { enabled: !!process.env.SENDGRID_API_KEY },
+          stripe: { enabled: !!process.env.STRIPE_SECRET_KEY },
+          openai: { enabled: !!process.env.OPENAI_API_KEY },
+          claude: { enabled: !!process.env.ANTHROPIC_API_KEY }
+        },
+        security: {
+          rate_limiting: true,
+          audit_logging: true,
+          error_tracking: true,
+          session_security: true
+        },
+        performance: {
+          caching_enabled: true,
+          response_compression: true,
+          cdn_enabled: process.env.NODE_ENV === 'production'
+        }
       },
-      description: 'Platform-wide settings and feature flags',
+      description: 'Production platform settings and feature flags',
       category: 'platform'
+    }
+  })
+
+  // Create onboarding system configuration
+  await prisma.systemConfig.upsert({
+    where: { key: 'onboarding_config' },
+    update: {},
+    create: {
+      key: 'onboarding_config',
+      value: {
+        enabled: true,
+        paths: ['executive', 'technical', 'marketing', 'analyst', 'quick_start'],
+        analytics_enabled: true,
+        ab_testing_enabled: true,
+        recovery_flows_enabled: true,
+        personalization_enabled: true
+      },
+      description: 'Advanced onboarding system configuration',
+      category: 'onboarding'
     }
   })
 

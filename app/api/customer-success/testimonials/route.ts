@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { prisma } from '@/lib/prisma'
+import { EmailService } from '@/lib/email'
 
 // Customer success testimonial schema
 const testimonialSchema = z.object({
@@ -103,16 +105,43 @@ export async function POST(request: NextRequest) {
       published: false
     }
 
-    // TODO: Save to customer success database
-    // await prisma.customerTestimonial.create({ data: testimonial })
+    // Save to customer success database using system config
+    await prisma.systemConfig.create({
+      data: {
+        key: `testimonial_${testimonial.id}`,
+        value: testimonial,
+        description: `Customer testimonial from ${validatedData.company}`,
+        category: 'customer_success'
+      }
+    })
     
-    // TODO: Notify customer success team for verification
-    // await notifyCustomerSuccessTeam(testimonial)
+    // Notify customer success team for verification
+    await notifyCustomerSuccessTeam(testimonial)
     
-    // TODO: If high-impact results, fast-track for landing page inclusion
+    // If high-impact results, fast-track for landing page inclusion
     if (validatedData.results.roiPercentage > 500) {
-      // await prioritizeForLandingPageReview(testimonial)
+      await prioritizeForLandingPageReview(testimonial)
     }
+
+    // Create audit log for testimonial submission
+    await prisma.auditLog.create({
+      data: {
+        userId: validatedData.userId,
+        action: 'TESTIMONIAL_SUBMITTED',
+        resource: 'customer_testimonial',
+        resourceId: testimonial.id,
+        newValues: {
+          company: validatedData.company,
+          roiPercentage: validatedData.results.roiPercentage,
+          costSavings: validatedData.results.costSavings,
+          trinityAgentsUsed: validatedData.trinityAgentsUsed
+        },
+        metadata: {
+          highImpact: validatedData.results.roiPercentage > 500,
+          consentToPublish: validatedData.consentToPublish
+        }
+      }
+    })
 
     return NextResponse.json({
       success: true,
@@ -192,4 +221,96 @@ export async function GET(request: NextRequest) {
     metrics: aggregateMetrics,
     count: testimonials.length
   })
+}
+
+// Helper function to notify customer success team
+async function notifyCustomerSuccessTeam(testimonial: any): Promise<void> {
+  try {
+    const successTeamEmail = process.env.CUSTOMER_SUCCESS_EMAIL || 'success@x3o.ai'
+    
+    await EmailService.sendEmail({
+      to: successTeamEmail,
+      subject: `New High-Impact Testimonial: ${testimonial.company} (${testimonial.results.roiPercentage}% ROI)`,
+      html: `
+        <h2>New Customer Success Story Submitted</h2>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3>${testimonial.name} - ${testimonial.role}</h3>
+          <p><strong>Company:</strong> ${testimonial.company} (${testimonial.industry})</p>
+          <p><strong>Trinity Agents Used:</strong> ${testimonial.trinityAgentsUsed.join(', ')}</p>
+          
+          <h4>Results:</h4>
+          <ul>
+            <li>Cost Savings: $${testimonial.results.costSavings.toLocaleString()}</li>
+            <li>ROI: ${testimonial.results.roiPercentage}%</li>
+            <li>Time Reduced: ${testimonial.results.timeReduced} hours/month</li>
+            <li>Efficiency Gain: ${testimonial.results.efficiencyGain}%</li>
+            <li>Implementation: ${testimonial.results.implementationTime} days</li>
+          </ul>
+          
+          <h4>Testimonial:</h4>
+          <blockquote style="border-left: 4px solid #37322f; padding-left: 20px; font-style: italic;">
+            "${testimonial.testimonial}"
+          </blockquote>
+          
+          <p><strong>Consent to Publish:</strong> ${testimonial.consentToPublish ? 'Yes' : 'No'}</p>
+        </div>
+        
+        <p>Please review and verify this testimonial for potential inclusion in marketing materials.</p>
+        
+        ${testimonial.results.roiPercentage > 500 ?
+          '<p style="color: #dc2626; font-weight: bold;">⚡ HIGH IMPACT: Consider fast-tracking for landing page inclusion</p>' :
+          ''
+        }
+      `
+    })
+  } catch (error) {
+    console.error('Failed to notify customer success team:', error)
+  }
+}
+
+// Helper function to prioritize high-impact testimonials
+async function prioritizeForLandingPageReview(testimonial: any): Promise<void> {
+  try {
+    // Mark as high priority in system config
+    await prisma.systemConfig.create({
+      data: {
+        key: `high_priority_testimonial_${testimonial.id}`,
+        value: {
+          ...testimonial,
+          priority: 'HIGH',
+          fastTrack: true,
+          marketingReviewRequired: true,
+          potentialLandingPageCandidate: true
+        },
+        description: `High-impact testimonial (${testimonial.results.roiPercentage}% ROI) for urgent review`,
+        category: 'marketing_priority'
+      }
+    })
+
+    // Send priority notification to marketing team
+    const marketingEmail = process.env.MARKETING_EMAIL || 'marketing@x3o.ai'
+    
+    await EmailService.sendEmail({
+      to: marketingEmail,
+      subject: `🚨 HIGH-IMPACT Testimonial: ${testimonial.results.roiPercentage}% ROI - ${testimonial.company}`,
+      html: `
+        <h1 style="color: #dc2626;">High-Impact Customer Success Story</h1>
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px;">
+          <h2>${testimonial.company} achieved ${testimonial.results.roiPercentage}% ROI</h2>
+          <p><strong>${testimonial.name}</strong> - ${testimonial.role}</p>
+          <p><strong>Results:</strong> $${testimonial.results.costSavings.toLocaleString()} savings, ${testimonial.results.efficiencyGain}% efficiency gain</p>
+          
+          <blockquote style="font-style: italic; font-size: 18px; border-left: 4px solid #37322f; padding-left: 20px;">
+            "${testimonial.testimonial}"
+          </blockquote>
+          
+          <p style="font-weight: bold; color: #dc2626;">
+            ⚡ RECOMMENDATION: Fast-track for landing page inclusion
+          </p>
+        </div>
+      `
+    })
+  } catch (error) {
+    console.error('Failed to prioritize testimonial:', error)
+  }
 }

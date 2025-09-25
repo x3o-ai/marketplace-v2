@@ -77,6 +77,11 @@ model User {
   payments     Payment[]
   invoices     Invoice[]
   emailLogs    EmailLog[]
+  
+  // Onboarding Relations
+  onboardingProgress UserOnboardingProgress[]
+  onboardingTemplates UserOnboardingTemplate[]
+  onboardingAnalytics OnboardingAnalytics[]
 
   @@map("users")
 }
@@ -720,6 +725,235 @@ model AuditLog {
   @@index([organizationId, timestamp])
   @@index([action, timestamp])
   @@index([resource, timestamp])
+}
+
+// ============================================================================
+// ONBOARDING & USER EXPERIENCE
+// ============================================================================
+
+model OnboardingStep {
+  id          String   @id @default(cuid())
+  key         String   @unique // step identifier (e.g., "welcome", "profile_setup", "first_agent")
+  name        String   // Human-readable name
+  description String?  // Step description
+  
+  // Configuration
+  type        OnboardingStepType
+  category    String?  // grouping (e.g., "setup", "first_interaction", "advanced")
+  order       Int      // Display order
+  
+  // Content & UI
+  title       String?  // Title shown to user
+  content     Json?    // Step content configuration
+  component   String?  // React component to render
+  
+  // Requirements & Logic
+  required    Boolean  @default(true)
+  conditions  Json?    // Conditions to show this step
+  triggers    Json?    // What triggers completion
+  
+  // Timing & Behavior
+  estimatedMinutes Int? // Estimated time to complete
+  skipAllowed Boolean  @default(false)
+  
+  // A/B Testing
+  variants    Json?    // Different versions of the step
+  
+  // Status
+  active      Boolean  @default(true)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  userProgress UserOnboardingProgress[]
+  analytics    OnboardingAnalytics[]
+
+  @@map("onboarding_steps")
+  @@index([type, order])
+}
+
+model UserOnboardingProgress {
+  id               String   @id @default(cuid())
+  userId           String
+  stepId           String
+  
+  // Progress Status
+  status           OnboardingStepStatus @default(NOT_STARTED)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  skippedAt        DateTime?
+  
+  // Progress Data
+  progressData     Json?    // Step-specific progress data
+  completionData   Json?    // Data collected during completion
+  
+  // A/B Testing
+  variantId        String?  // Which variant was shown
+  
+  // Analytics
+  timeSpent        Int?     // Milliseconds spent on step
+  attempts         Int      @default(0)
+  helpUsed         Boolean  @default(false)
+  
+  // Error Handling
+  errors           Json?    // Any errors encountered
+  lastError        String?  @db.Text
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step OnboardingStep    @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding_progress")
+  @@unique([userId, stepId])
+  @@index([userId, status])
+  @@index([stepId, status])
+}
+
+model OnboardingAnalytics {
+  id               String   @id @default(cuid())
+  
+  // Event Details
+  eventType        OnboardingEventType
+  stepId           String?
+  userId           String?
+  
+  // Event Data
+  eventData        Json     // Event-specific data
+  metadata         Json?    // Additional context
+  
+  // User Context
+  userAgent        String?  @db.Text
+  ipAddress        String?
+  sessionId        String?
+  
+  // A/B Testing
+  variantId        String?
+  experimentId     String?
+  
+  // Performance
+  pageLoadTime     Int?     // milliseconds
+  interactionTime  Int?     // time to interaction
+  
+  // Conversion Tracking
+  conversionStep   String?  // If this led to conversion
+  conversionValue  Float?   // Value of conversion
+  
+  // Timestamps
+  timestamp DateTime @default(now())
+  
+  // Relations
+  user User?              @relation(fields: [userId], references: [id])
+  step OnboardingStep?    @relation(fields: [stepId], references: [id])
+
+  @@map("onboarding_analytics")
+  @@index([eventType, timestamp])
+  @@index([userId, timestamp])
+  @@index([stepId, timestamp])
+  @@index([variantId, timestamp])
+}
+
+model OnboardingTemplate {
+  id          String   @id @default(cuid())
+  name        String   // Template name (e.g., "Executive Path", "Technical Path")
+  description String?
+  
+  // Template Configuration
+  targetAudience Json   // Targeting rules
+  steps       Json     // Ordered list of step IDs and configurations
+  
+  // Personalization
+  industry    String?  // Target industry
+  companySize String?  // Target company size
+  role        String?  // Target role
+  
+  // A/B Testing
+  testGroup   String?  // A/B test group identifier
+  weight      Float    @default(1.0) // Traffic allocation weight
+  
+  // Performance
+  conversionRate Float? // Historical conversion rate
+  completionRate Float? // Historical completion rate
+  avgTimeToComplete Int? // Average completion time in minutes
+  
+  // Status
+  active      Boolean  @default(true)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  userAssignments UserOnboardingTemplate[]
+
+  @@map("onboarding_templates")
+}
+
+model UserOnboardingTemplate {
+  id         String   @id @default(cuid())
+  userId     String
+  templateId String
+  
+  // Assignment Details
+  assignedAt DateTime @default(now())
+  reason     String?  // Why this template was chosen
+  
+  // Progress
+  startedAt    DateTime?
+  completedAt  DateTime?
+  abandonedAt  DateTime?
+  
+  // Metadata
+  assignmentData Json? // Data used for assignment
+  
+  // Relations
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template OnboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding_templates")
+  @@unique([userId, templateId])
+  @@index([userId])
+  @@index([templateId])
+}
+
+enum OnboardingStepType {
+  WELCOME
+  PROFILE_SETUP
+  AGENT_INTRODUCTION
+  AGENT_SETUP
+  FIRST_INTERACTION
+  SUCCESS_MILESTONE
+  FEATURE_DISCOVERY
+  INTEGRATION_SETUP
+  COMPLETION
+  CONVERSION
+}
+
+enum OnboardingStepStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
+  ABANDONED
+}
+
+enum OnboardingEventType {
+  STEP_STARTED
+  STEP_COMPLETED
+  STEP_SKIPPED
+  STEP_FAILED
+  STEP_ABANDONED
+  HELP_USED
+  ERROR_OCCURRED
+  CONVERSION
+  TEMPLATE_ASSIGNED
+  EXPERIMENT_VIEWED
 }
 
 // ============================================================================
