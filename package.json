@@ -72,7 +72,11 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zod": "^3.25.67"
+    "zod": "^3.25.67",
+    "openai": "^4.28.4",
+    "@anthropic-ai/sdk": "^0.24.3",
+    "googleapis": "^128.0.0",
+    "framer-motion": "^10.16.16"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
