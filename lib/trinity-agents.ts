@@ -4,7 +4,6 @@ import AIServiceManager, { TRINITY_AGENT_CONFIGS } from './ai-services'
 import { PromptBuilder, ResponseValidator, ORACLE_PROMPTS, SENTINEL_PROMPTS, SAGE_PROMPTS } from './trinity-prompts'
 import type { AgentContext } from './trinity-prompts'
 import AnalyticsIntegrationManager, { AnalyticsData, MarketingInsight } from './analytics-integration'
-import AnalyticsIntegrationManager, { AnalyticsData, MarketingInsight } from './analytics-integration'
 
 export interface TrinityAgentResponse {
   agent: string
